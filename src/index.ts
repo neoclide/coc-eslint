@@ -116,7 +116,7 @@ function shouldBeValidated(textDocument: TextDocument): boolean {
 
 export async function activate(context: ExtensionContext): Promise<void> {
   let { subscriptions } = context
-  const config = workspace.getConfiguration().get('eslint') as any
+  const config = workspace.getConfiguration().get('eslint', {}) as any
   const enable = config.enable
   if (enable === false) return
   const filetypes = config.filetypes || ['javascript', 'javascript.jsx']
