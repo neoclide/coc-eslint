@@ -12,7 +12,25 @@
     "build": "tsc -p tsconfig.json",
     "prepare": "yarn clean && yarn build"
   },
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascript.jsx",
+    "onCommand:eslint.createConfig",
+    "onCommand:eslint.executeAutofix"
+  ],
   "contributes": {
+    "commands": [
+      {
+        "title": "Fix all auto-fixable problems",
+        "category": "ESLint",
+        "command": "eslint.executeAutofix"
+      },
+      {
+        "title": "Create a '.eslintrc' config file",
+        "category": "ESLint",
+        "command": "eslint.createConfig"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Eslint",

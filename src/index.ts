@@ -248,6 +248,24 @@ export async function activate(context: ExtensionContext): Promise<void> {
     }
   }
 
+  subscriptions.push(commands.registerCommand('eslint.createConfig', createDefaultConfiguration))
+
+  subscriptions.push(commands.registerCommand('eslint.executeAutofix', async () => {
+    let document = await workspace.document
+    let textDocument: VersionedTextDocumentIdentifier = {
+      uri: document.uri,
+      version: document.version
+    }
+    let params: ExecuteCommandParams = {
+      command: 'eslint.applyAutoFix',
+      arguments: [textDocument]
+    }
+    client.sendRequest(ExecuteCommandRequest.type, params)
+      .then(undefined, () => {
+        workspace.showMessage('Failed to apply ESLint fixes to the document.', 'error')
+      })
+  }))
+
   client.onReady().then(() => {
     client.onNotification(exitCalled, params => {
       workspace.showMessage(
@@ -266,25 +284,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
       workspace.showMessage(`Failed to load the ESLint library for the document ${uri.fsPath}`, 'warning')
       return {}
     })
-
-    subscriptions.push(commands.registerCommand('eslint.createConfig', createDefaultConfiguration))
     workspace.onDidChangeConfiguration(onDidChangeConfiguration, null, subscriptions)
-
-    subscriptions.push(commands.registerCommand('eslint.executeAutofix', async () => {
-      let document = await workspace.document
-      let textDocument: VersionedTextDocumentIdentifier = {
-        uri: document.uri,
-        version: document.version
-      }
-      let params: ExecuteCommandParams = {
-        command: 'eslint.applyAutoFix',
-        arguments: [textDocument]
-      }
-      client.sendRequest(ExecuteCommandRequest.type, params)
-        .then(undefined, () => {
-          workspace.showMessage('Failed to apply ESLint fixes to the document.', 'error')
-        })
-    }))
   }, _e => {
     // noop
   })
