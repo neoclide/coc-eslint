@@ -13,10 +13,7 @@
     "prepare": "yarn clean && yarn build"
   },
   "activationEvents": [
-    "onLanguage:javascript",
-    "onLanguage:javascript.jsx",
-    "onCommand:eslint.createConfig",
-    "onCommand:eslint.executeAutofix"
+    "*"
   ],
   "contributes": {
     "commands": [
