@@ -4,66 +4,17 @@
  * ------------------------------------------------------------------------------------------ */
 'use strict'
 
-import {
-  createConnection,
-  IConnection,
-  ResponseError,
-  RequestType,
-  NotificationType,
-  ErrorCodes,
-  RequestHandler,
-  NotificationHandler,
-  Diagnostic,
-  DiagnosticSeverity,
-  Range,
-  Files,
-  CancellationToken,
-  TextDocuments,
-  TextDocument,
-  TextDocumentSyncKind,
-  TextEdit,
-  TextDocumentIdentifier,
-  TextDocumentSaveReason,
-  Command,
-  WorkspaceChange,
-  CodeActionRequest,
-  VersionedTextDocumentIdentifier,
-  ExecuteCommandRequest,
-  DidChangeWatchedFilesNotification,
-  DidChangeConfigurationNotification,
-  WorkspaceFolder,
-  DidChangeWorkspaceFoldersNotification,
-  CodeAction,
-  CodeActionKind
-} from 'vscode-languageserver'
-
-import URI from 'vscode-uri'
 import * as path from 'path'
-
-namespace Is {
-  const toString = Object.prototype.toString
-
-  export function boolean(value: any): value is boolean {
-    return value === true || value === false
-  }
-
-  export function string(value: any): value is string {
-    return toString.call(value) === '[object String]'
-  }
-}
+import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, DidChangeWorkspaceFoldersNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
+import URI from 'vscode-uri'
+import { Is, TextDocumentSettings, CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport } from './types'
+import { getAllFixEdits } from './util'
 
 namespace CommandIds {
   export const applySingleFix = 'eslint.applySingleFix'
   export const applySameFixes = 'eslint.applySameFixes'
   export const applyAllFixes = 'eslint.applyAllFixes'
   export const applyAutoFix = 'eslint.applyAutoFix'
-}
-
-interface ESLintError extends Error {
-  messageTemplate?: string
-  messageData?: {
-    pluginName?: string
-  }
 }
 
 enum Status {
@@ -109,85 +60,6 @@ namespace NoESLintLibraryRequest {
     void,
     void
     >('eslint/noLibrary')
-}
-
-type RunValues = 'onType' | 'onSave'
-
-interface DirectoryItem {
-  directory: string
-  changeProcessCWD?: boolean
-}
-
-namespace DirectoryItem {
-  export function is(item: any): item is DirectoryItem {
-    let candidate = item as DirectoryItem
-    return (
-      candidate &&
-      Is.string(candidate.directory) &&
-      (Is.boolean(candidate.changeProcessCWD) ||
-        candidate.changeProcessCWD === void 0)
-    )
-  }
-}
-
-interface TextDocumentSettings {
-  validate: boolean
-  packageManager: 'npm' | 'yarn'
-  autoFix: boolean
-  autoFixOnSave: boolean
-  options: any | undefined
-  run: RunValues
-  nodePath: string | undefined
-  workspaceFolder: WorkspaceFolder | undefined
-  workingDirectory: DirectoryItem | undefined
-  library: ESLintModule | undefined
-  resolvedGlobalPackageManagerPath: string | undefined
-}
-
-interface ESLintAutoFixEdit {
-  range: [number, number]
-  text: string
-}
-
-interface ESLintProblem {
-  line: number
-  column: number
-  endLine?: number
-  endColumn?: number
-  severity: number
-  ruleId: string
-  message: string
-  fix?: ESLintAutoFixEdit
-}
-
-interface ESLintDocumentReport {
-  filePath: string
-  errorCount: number
-  warningCount: number
-  messages: ESLintProblem[]
-  output?: string
-}
-
-interface ESLintReport {
-  errorCount: number
-  warningCount: number
-  results: ESLintDocumentReport[]
-}
-
-interface CLIOptions {
-  cwd?: string
-}
-
-interface CLIEngine {
-  executeOnText(content: string, file?: string): ESLintReport
-}
-
-interface CLIEngineConstructor {
-  new(options: CLIOptions): CLIEngine
-}
-
-interface ESLintModule {
-  CLIEngine: CLIEngineConstructor
 }
 
 function makeDiagnostic(problem: ESLintProblem): Diagnostic {
@@ -371,15 +243,16 @@ process.on('uncaughtException', (error: any) => {
       }
     }
   }
+  // tslint:disable-next-line:no-console
   console.error('Uncaught exception recevied.')
   if (message) {
+    // tslint:disable-next-line:no-console
     console.error(message)
   }
 })
 
 let connection = createConnection()
-console.log = connection.console.log.bind(connection.console)
-console.error = connection.console.error.bind(connection.console)
+connection.console.info(`ESLint server running in node ${process.version}`)
 let documents: TextDocuments = new TextDocuments()
 
 let _globalNpmPath: string | null | undefined
@@ -645,7 +518,7 @@ class BufferedMessageQueue {
       if (requestMessage.token.isCancellationRequested) {
         requestMessage.reject(
           new ResponseError(
-            ErrorCodes.RequestCancelled as number,
+            ErrorCodes.RequestCancelled,
             'Request got cancelled'
           )
         )
@@ -660,7 +533,7 @@ class BufferedMessageQueue {
       ) {
         requestMessage.reject(
           new ResponseError(
-            ErrorCodes.RequestCancelled as number,
+            ErrorCodes.RequestCancelled,
             'Request got cancelled'
           )
         )
@@ -747,31 +620,6 @@ documents.onDidChangeContent(event => {
   })
 })
 
-function getFixes(textDocument: TextDocument): TextEdit[] {
-  let uri = textDocument.uri
-  let edits = codeActions.get(uri)
-  function createTextEdit(editInfo: AutoFix): TextEdit {
-    return TextEdit.replace(
-      Range.create(
-        textDocument.positionAt(editInfo.edit.range[0]),
-        textDocument.positionAt(editInfo.edit.range[1])
-      ),
-      editInfo.edit.text || ''
-    )
-  }
-  if (edits) {
-    let fixes = new Fixes(edits)
-    if (
-      fixes.isEmpty() ||
-      textDocument.version !== fixes.getDocumentVersion()
-    ) {
-      return []
-    }
-    return fixes.getOverlapFree().map(createTextEdit)
-  }
-  return []
-}
-
 documents.onWillSaveWaitUntil(event => {
   if (event.reason === TextDocumentSaveReason.AfterDelay) {
     return []
@@ -786,9 +634,9 @@ documents.onWillSaveWaitUntil(event => {
     // we need to validate the file.
     if (settings.run === 'onSave') {
       // Do not queue this since we want to get the fixes as fast as possible.
-      return validateSingle(document, false).then(() => getFixes(document))
+      return validateSingle(document, false).then(() => getAllFixEdits(document, settings))
     } else {
-      return getFixes(document)
+      return getAllFixEdits(document, settings)
     }
   })
 })
@@ -859,10 +707,10 @@ connection.onInitialize(_params => {
 
 connection.onInitialized(() => {
   connection.client.register(DidChangeConfigurationNotification.type, undefined)
-  // connection.client.register(
-  //   DidChangeWorkspaceFoldersNotification.type,
-  //   undefined
-  // )
+  connection.client.register(
+    DidChangeWorkspaceFoldersNotification.type,
+    undefined
+  )
 })
 
 messageQueue.registerNotification(
@@ -1273,7 +1121,7 @@ class Fixes {
   }
 }
 
-let commands: Map<string, WorkspaceChange> = new Map()
+let commands: Map<string, WorkspaceChange>
 messageQueue.registerRequest(
   CodeActionRequest.type,
   params => {
@@ -1380,42 +1228,19 @@ messageQueue.registerRequest(
   }
 )
 
-function computeAllFixes(
-  identifier: VersionedTextDocumentIdentifier
-): TextEdit[] {
-  let uri = identifier.uri
-  let textDocument = documents.get(uri)
-  if (!textDocument || identifier.version !== textDocument.version) {
-    return undefined
-  }
-  let edits = codeActions.get(uri)
-  function createTextEdit(editInfo: AutoFix): TextEdit {
-    return TextEdit.replace(
-      Range.create(
-        textDocument.positionAt(editInfo.edit.range[0]),
-        textDocument.positionAt(editInfo.edit.range[1])
-      ),
-      editInfo.edit.text || ''
-    )
-  }
-
-  if (edits) {
-    let fixes = new Fixes(edits)
-    if (!fixes.isEmpty()) {
-      return fixes.getOverlapFree().map(createTextEdit)
-    }
-  }
-  return undefined
-}
-
 messageQueue.registerRequest(
   ExecuteCommandRequest.type,
-  params => {
+  async params => {
     let workspaceChange: WorkspaceChange
     if (params.command === CommandIds.applyAutoFix) {
       let identifier: VersionedTextDocumentIdentifier = params.arguments[0]
-      let edits = computeAllFixes(identifier)
-      if (edits) {
+      if (!identifier.uri.startsWith('file:')) {
+        return {}
+      }
+      let textDocument = documents.get(identifier.uri)
+      let settings = await resolveSettings(textDocument)
+      let edits = getAllFixEdits(textDocument, settings)
+      if (edits && edits.length) {
         workspaceChange = new WorkspaceChange()
         let textChange = workspaceChange.getTextEditChange(identifier)
         edits.forEach(edit => textChange.add(edit))
@@ -1427,17 +1252,15 @@ messageQueue.registerRequest(
     if (!workspaceChange) {
       return {}
     }
-    return connection.workspace.applyEdit(workspaceChange.edit).then(
-      response => {
-        if (!response.applied) {
-          connection.console.error(`Failed to apply command: ${params.command}`)
-        }
-        return {}
-      },
-      () => {
+    try {
+      let response = await connection.workspace.applyEdit(workspaceChange.edit)
+      if (!response.applied) {
         connection.console.error(`Failed to apply command: ${params.command}`)
       }
-    )
+    } catch (e) {
+      connection.console.error(`Failed to apply command: ${params.command}`)
+    }
+    return {}
   },
   (params): number => {
     if (params.command === CommandIds.applyAutoFix) {

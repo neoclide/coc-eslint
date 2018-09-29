@@ -111,9 +111,19 @@
     tslint-config-prettier "^1.6.0"
     tslint-react "^3.2.0"
 
-"@types/node@^10.9.4":
-  version "10.9.4"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.9.4.tgz#0f4cb2dc7c1de6096055357f70179043c33e9897"
+"@types/fast-diff@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@types/fast-diff/-/fast-diff-1.1.0.tgz#68c7f476025740b0b6756e51e38b1188dd528b0e"
+
+"@types/mkdirp@^0.5.2":
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/@types/mkdirp/-/mkdirp-0.5.2.tgz#503aacfe5cc2703d5484326b1b27efa67a339c1f"
+  dependencies:
+    "@types/node" "*"
+
+"@types/node@*", "@types/node@^10.11.3":
+  version "10.11.3"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.11.3.tgz#c055536ac8a5e871701aa01914be5731539d01ee"
 
 acorn-jsx@^4.1.1:
   version "4.1.1"
@@ -274,11 +284,12 @@ cli-width@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/cli-width/-/cli-width-2.2.0.tgz#ff19ede8a9a5e579324147b0c11f0fbcbabed639"
 
-coc.nvim@^0.0.15:
-  version "0.0.15"
-  resolved "https://registry.yarnpkg.com/coc.nvim/-/coc.nvim-0.0.15.tgz#e28e42e9dae92bf372b16918bf68b2e8696e7e4d"
+coc.nvim@^0.0.21:
+  version "0.0.21"
+  resolved "https://registry.yarnpkg.com/coc.nvim/-/coc.nvim-0.0.21.tgz#e82f2d6ed0d7410e6c536f941cff5faf2b403c61"
   dependencies:
     "@chemzqm/neovim" "4.3.23"
+    "@types/mkdirp" "^0.5.2"
     debounce "^1.2.0"
     deep-equal "^1.0.1"
     diff "^3.5.0"
@@ -289,14 +300,16 @@ coc.nvim@^0.0.15:
     jsonc-parser "^2.0.2"
     log4js "^3.0.5"
     minimatch "^3.0.4"
+    mkdirp "^0.5.1"
+    node-json-db "^0.9.0"
     node-serial "^0.1.1"
-    once "^1.4.0"
     pify "^4.0.0"
     semver "^5.5.1"
     tslib "^1.9.3"
     uuid "^3.3.2"
-    vscode-languageserver-protocol "^3.12.0"
-    vscode-languageserver-types "^3.12.0"
+    vscode-languageserver-protocol "^3.13.0"
+    vscode-languageserver-types "^3.13.0"
+    vscode-snippet-parser "^0.0.5"
     vscode-uri "^1.0.6"
     which "^1.3.1"
 
@@ -345,6 +358,12 @@ debug@^3.1.0:
   resolved "https://registry.yarnpkg.com/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
   dependencies:
     ms "2.0.0"
+
+debug@^4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/debug/-/debug-4.0.1.tgz#f9bb36d439b8d1f0dd52d8fb6b46e4ebb8c1cd5b"
+  dependencies:
+    ms "^2.1.1"
 
 deep-equal@^1.0.1:
   version "1.0.1"
@@ -402,15 +421,15 @@ eslint-visitor-keys@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/eslint-visitor-keys/-/eslint-visitor-keys-1.0.0.tgz#3f3180fb2e291017716acb4c9d6d5b5c34a6a81d"
 
-eslint@^5.5.0:
-  version "5.5.0"
-  resolved "https://registry.yarnpkg.com/eslint/-/eslint-5.5.0.tgz#8557fcceab5141a8197da9ffd9904f89f64425c6"
+eslint@^5.6.1:
+  version "5.6.1"
+  resolved "https://registry.yarnpkg.com/eslint/-/eslint-5.6.1.tgz#348134e32ccc09abb2df1bf282b3f6eed8c7b480"
   dependencies:
     "@babel/code-frame" "^7.0.0"
     ajv "^6.5.3"
     chalk "^2.1.0"
     cross-spawn "^6.0.5"
-    debug "^3.1.0"
+    debug "^4.0.1"
     doctrine "^2.1.0"
     eslint-scope "^4.0.0"
     eslint-utils "^1.3.1"
@@ -749,7 +768,7 @@ minimist@0.0.8:
   version "0.0.8"
   resolved "http://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz#857fcabfc3397d2625b8228262e86aa7a011b05d"
 
-mkdirp@^0.5.1:
+mkdirp@0.5.x, mkdirp@^0.5.1:
   version "0.5.1"
   resolved "http://registry.npmjs.org/mkdirp/-/mkdirp-0.5.1.tgz#30057438eac6cf7f8c4767f38648d6697d75c903"
   dependencies:
@@ -758,6 +777,10 @@ mkdirp@^0.5.1:
 ms@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
+
+ms@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.1.tgz#30a5864eb3ebb0a66f2ebe6d727af06a09d86e0a"
 
 msgpack-lite@^0.1.26:
   version "0.1.26"
@@ -788,6 +811,12 @@ node-int64@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/node-int64/-/node-int64-0.4.0.tgz#87a9065cdb355d3182d8f94ce11188b825c68a3b"
 
+node-json-db@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/node-json-db/-/node-json-db-0.9.0.tgz#957f143cbd4be966a724f1e4c8053756944c54b8"
+  dependencies:
+    mkdirp "0.5.x"
+
 node-serial@^0.1.1:
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/node-serial/-/node-serial-0.1.1.tgz#3766fa9614c20c6f27d3713f9bd8c56747fbb8c9"
@@ -798,7 +827,7 @@ object-assign@^4.0.1:
   version "4.1.1"
   resolved "https://registry.yarnpkg.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
 
-once@^1.3.0, once@^1.4.0:
+once@^1.3.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/once/-/once-1.4.0.tgz#583b1aa775961d4b113ac17d9c50baef9dd76bd1"
   dependencies:
@@ -1109,9 +1138,9 @@ type-check@~0.3.2:
   dependencies:
     prelude-ls "~1.1.2"
 
-typescript@^3.0.3:
-  version "3.0.3"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.0.3.tgz#4853b3e275ecdaa27f78fda46dc273a7eb7fc1c8"
+typescript@^3.2.0-dev.20180928:
+  version "3.2.0-dev.20180928"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.2.0-dev.20180928.tgz#1361fd2c3f9871cfc09f81a71ebd8944aa3bf7e0"
 
 uri-js@^4.2.2:
   version "4.2.2"
@@ -1127,29 +1156,33 @@ uuid@^3.3.2:
   version "3.3.2"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.3.2.tgz#1b4af4955eb3077c501c23872fc6513811587131"
 
-vscode-jsonrpc@^3.6.2:
-  version "3.6.2"
-  resolved "https://registry.yarnpkg.com/vscode-jsonrpc/-/vscode-jsonrpc-3.6.2.tgz#3b5eef691159a15556ecc500e9a8a0dd143470c8"
+vscode-jsonrpc@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/vscode-jsonrpc/-/vscode-jsonrpc-4.0.0.tgz#a7bf74ef3254d0a0c272fab15c82128e378b3be9"
 
-vscode-languageserver-protocol@^3.10.3, vscode-languageserver-protocol@^3.12.0:
-  version "3.12.0"
-  resolved "https://registry.yarnpkg.com/vscode-languageserver-protocol/-/vscode-languageserver-protocol-3.12.0.tgz#5b23501292abad88f0463b01e83ff98e64a37652"
+vscode-languageserver-protocol@3.13.0, vscode-languageserver-protocol@^3.13.0:
+  version "3.13.0"
+  resolved "https://registry.yarnpkg.com/vscode-languageserver-protocol/-/vscode-languageserver-protocol-3.13.0.tgz#710d8e42119bb3affb1416e1e104bd6b4d503595"
   dependencies:
-    vscode-jsonrpc "^3.6.2"
-    vscode-languageserver-types "^3.12.0"
+    vscode-jsonrpc "^4.0.0"
+    vscode-languageserver-types "3.13.0"
 
-vscode-languageserver-types@^3.12.0:
-  version "3.12.0"
-  resolved "https://registry.yarnpkg.com/vscode-languageserver-types/-/vscode-languageserver-types-3.12.0.tgz#f96051381b6a050b7175b37d6cb5d2f2eb64b944"
+vscode-languageserver-types@3.13.0, vscode-languageserver-types@^3.13.0:
+  version "3.13.0"
+  resolved "https://registry.yarnpkg.com/vscode-languageserver-types/-/vscode-languageserver-types-3.13.0.tgz#b704b024cef059f7b326611c99b9c8753c0a18b4"
 
-vscode-languageserver@^5.0.3:
-  version "5.0.3"
-  resolved "https://registry.yarnpkg.com/vscode-languageserver/-/vscode-languageserver-5.0.3.tgz#29a4655348868223d9b3b6e385a50e77c6f4992e"
+vscode-languageserver@^5.1.0:
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/vscode-languageserver/-/vscode-languageserver-5.1.0.tgz#012a28f154cc7a848c443d217894942e4c3eeb39"
   dependencies:
-    vscode-languageserver-protocol "^3.10.3"
-    vscode-uri "^1.0.5"
+    vscode-languageserver-protocol "3.13.0"
+    vscode-uri "^1.0.6"
 
-vscode-uri@^1.0.5, vscode-uri@^1.0.6:
+vscode-snippet-parser@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/vscode-snippet-parser/-/vscode-snippet-parser-0.0.5.tgz#86ff0439212265265283d9ca86ee1bd1e66fc322"
+
+vscode-uri@^1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/vscode-uri/-/vscode-uri-1.0.6.tgz#6b8f141b0bbc44ad7b07e94f82f168ac7608ad4d"
 
