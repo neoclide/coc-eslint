@@ -120,9 +120,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
   const enable = config.enable
   if (enable === false) return
   const filetypes = config.filetypes || ['javascript', 'javascript.jsx']
-  const selector: DocumentSelector = filetypes.map(filetype => {
-    return { language: filetype, scheme: 'file' }
-  })
+  const selector: DocumentSelector = filetypes.reduce((res, filetype) => {
+    return res.concat([{ language: filetype, scheme: 'file' }, { language: filetype, scheme: 'untitled' }])
+  }, [])
 
   let serverOptions: ServerOptions = {
     module: context.asAbsolutePath('./lib/server/index.js'),
