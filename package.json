@@ -103,16 +103,17 @@
   "devDependencies": {
     "@chemzqm/tsconfig": "^0.0.3",
     "@chemzqm/tslint-config": "^1.0.17",
+    "@types/fast-diff": "^1.1.0",
     "@types/node": "^10.11.3",
     "coc.nvim": "^0.0.21",
     "rimraf": "^2.6.2",
     "tslint": "^5.11.0",
-    "@types/fast-diff": "^1.1.0",
     "typescript": "^3.2.0-dev.20180928"
   },
   "dependencies": {
     "eslint": "^5.6.1",
     "fast-diff": "^1.1.2",
+    "resolve-from": "^4.0.0",
     "tslib": "^1.9.3",
     "vscode-languageserver": "^5.1.0",
     "vscode-languageserver-protocol": "^3.13.0",

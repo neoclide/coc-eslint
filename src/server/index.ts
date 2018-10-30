@@ -5,10 +5,10 @@
 'use strict'
 
 import * as path from 'path'
-import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, DidChangeWorkspaceFoldersNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
+import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, DidChangeWorkspaceFoldersNotification, ErrorCodes, ExecuteCommandRequest, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange, Files } from 'vscode-languageserver'
 import URI from 'vscode-uri'
 import { Is, TextDocumentSettings, CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport } from './types'
-import { getAllFixEdits } from './util'
+import { getAllFixEdits, resolveModule } from './util'
 
 namespace CommandIds {
   export const applySingleFix = 'eslint.applySingleFix'
@@ -308,71 +308,36 @@ function resolveSettings(
       if (uri.scheme === 'file') {
         let file = uri.fsPath
         let directory = path.dirname(file)
-        if (settings.nodePath) {
-          let nodePath = settings.nodePath
-          if (
-            !path.isAbsolute(nodePath) &&
-            settings.workspaceFolder !== void 0
-          ) {
-            let uri = URI.parse(settings.workspaceFolder.uri)
-            if (uri.scheme === 'file') {
-              nodePath = path.join(uri.fsPath, nodePath)
-            }
-          }
-          promise = Files.resolve('eslint', nodePath, nodePath, trace).then<
-            string,
-            string
-            >(undefined, () => {
-              return Files.resolve(
-                'eslint',
-                settings.resolvedGlobalPackageManagerPath,
-                directory,
-                trace
-              )
-            })
-        } else {
-          promise = Files.resolve(
-            'eslint',
-            settings.resolvedGlobalPackageManagerPath,
-            directory,
-            trace
-          )
-        }
+        promise = resolveModule('eslint', directory, settings.resolvedGlobalPackageManagerPath)
       } else {
-        promise = Files.resolve(
-          'eslint',
-          settings.resolvedGlobalPackageManagerPath,
-          settings.workspaceFolder ? settings.workspaceFolder.uri : undefined,
-          trace
-        )
+        let localPath = settings.workspaceFolder ? settings.workspaceFolder.uri : undefined
+        promise = resolveModule('eslint', localPath, settings.resolvedGlobalPackageManagerPath)
       }
-      return promise.then(
-        path => {
-          let library = path2Library.get(path)
-          if (!library) {
-            library = require(path)
-            if (!library.CLIEngine) {
-              settings.validate = false
-              connection.console.error(
-                `The eslint library loaded from ${path} doesn\'t export a CLIEngine. You need at least eslint@1.0.0`
-              )
-            } else {
-              connection.console.info(`ESLint library loaded from: ${path}`)
-              settings.library = library
-            }
-            path2Library.set(path, library)
+      return promise.then(path => {
+        let library = path2Library.get(path)
+        if (!library) {
+          library = require(path)
+          if (!library.CLIEngine) {
+            settings.validate = false
+            connection.console.error(
+              `The eslint library loaded from ${path} doesn\'t export a CLIEngine. You need at least eslint@1.0.0`
+            )
           } else {
+            connection.console.info(`ESLint library loaded from: ${path}`)
             settings.library = library
           }
-          return settings
-        },
-        () => {
-          settings.validate = false
-          connection.sendRequest(NoESLintLibraryRequest.type, {
-            source: { uri: document.uri }
-          })
-          return settings
+          path2Library.set(path, library)
+        } else {
+          settings.library = library
         }
+        return settings
+      }, () => {
+        settings.validate = false
+        connection.sendRequest(NoESLintLibraryRequest.type, {
+          source: { uri: document.uri }
+        })
+        return settings
+      }
       )
     })
   document2Settings.set(uri, resultPromise)

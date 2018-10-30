@@ -2,6 +2,7 @@ import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
 import { CLIOptions, TextDocumentSettings } from './types'
 import URI from 'vscode-uri'
+import resolveFrom from 'resolve-from'
 
 interface Change {
   start: number
@@ -65,4 +66,17 @@ export function getChange(oldStr: string, newStr: string): Change {
     }
   }
   return { start, end, newText }
+}
+
+export function resolveModule(name: string, localPath: string, globalPath: string): Promise<string> {
+  if (localPath) {
+    let path = resolveFrom.silent(localPath, name)
+    if (path) return Promise.resolve(path)
+  }
+  try {
+    let path = resolveFrom(globalPath, name)
+    return Promise.resolve(path)
+  } catch (e) {
+    return Promise.reject(e)
+  }
 }
