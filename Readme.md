@@ -36,7 +36,7 @@ In your vim/neovim run command:
 - `eslint.run` - run the linter `onSave` or `onType`, default is `onType`.
 - `eslint.autoFixOnSave` - enables auto fix on save.
 - `eslint.nodePath` - use this setting if an installed ESLint package can't be detected, for example `/myGlobalNodePackages/node_modules`.
-- `eslint.filetypes` - an array of language identifiers specify the files to be validated. Something like `"eslint.validate": [ "javascript", "javascriptreact", "html" ]`. If the setting is missing, it defaults to `["javascript", "javascript.jsx"]`.
+- `eslint.filetypes` - an array of language identifiers specify the files to be validated. Something like `"eslint.validate": [ "javascript", "javascriptreact", "html" ]`. If the setting is missing, it defaults to `["javascript", "javascriptreact"]`.
 
 ## Auto-fixing
 

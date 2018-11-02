@@ -6,7 +6,7 @@ import { CodeAction, CodeActionContext, Command, Diagnostic, DidCloseTextDocumen
 import Uri from 'vscode-uri'
 import { findEslint } from './utils'
 
-const defaultLanguages = ['javascript', 'javascript.jsx']
+const defaultLanguages = ['javascript', 'javascriptreact']
 namespace Is {
   const toString = Object.prototype.toString
 
@@ -119,7 +119,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
   const config = workspace.getConfiguration().get('eslint', {}) as any
   const enable = config.enable
   if (enable === false) return
-  const filetypes = config.filetypes || ['javascript', 'javascript.jsx']
+  const filetypes = config.filetypes || ['javascript', 'javascriptreact']
   const selector: DocumentSelector = filetypes.reduce((res, filetype) => {
     return res.concat([{ language: filetype, scheme: 'file' }, { language: filetype, scheme: 'untitled' }])
   }, [])
