@@ -672,10 +672,6 @@ connection.onInitialize(_params => {
 
 connection.onInitialized(() => {
   connection.client.register(DidChangeConfigurationNotification.type, undefined)
-  connection.client.register(
-    DidChangeWorkspaceFoldersNotification.type,
-    undefined
-  )
 })
 
 messageQueue.registerNotification(
