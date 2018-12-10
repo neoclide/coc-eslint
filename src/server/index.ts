@@ -243,12 +243,8 @@ process.on('uncaughtException', (error: any) => {
       }
     }
   }
-  // tslint:disable-next-line:no-console
-  console.error('Uncaught exception recevied.')
-  if (message) {
-    // tslint:disable-next-line:no-console
-    console.error(message)
-  }
+  connection.console.error(`Uncaught exception recevied.
+  ${message || ''}`)
 })
 
 let connection = createConnection()
