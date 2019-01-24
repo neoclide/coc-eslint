@@ -17,7 +17,8 @@
     "prepare": "yarn clean && yarn build"
   },
   "activationEvents": [
-    "*"
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact"
   ],
   "contributes": {
     "commands": [
