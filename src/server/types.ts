@@ -1,4 +1,5 @@
 import { WorkspaceFolder } from 'vscode-languageserver'
+import { CLIEngine } from 'eslint'
 
 export interface ESLintError extends Error {
   messageTemplate?: string
@@ -39,6 +40,7 @@ export interface ESLintReport {
 
 export interface CLIOptions {
   cwd?: string
+  [index: string]: any
 }
 
 export interface ESLintConfig {
@@ -53,17 +55,13 @@ export interface FixResult {
 
 export interface ESLintLinter {
   verifyAndFix(code: string, config: ESLintConfig, options: LinterOptions): FixResult
+  verify(code: string, config: ESLintConfig, options: { [index: string]: any }): any
 }
 
 export interface LinterOptions {
   filename: string
   allowInlineConfig: boolean
   fix: boolean
-}
-
-export interface CLIEngine {
-  executeOnText(content: string, file?: string): ESLintReport
-  getConfigForFile(file: string): ESLintConfig
 }
 
 export interface CLIEngineConstructor {
@@ -77,6 +75,7 @@ export interface LinterConstructor {
 export interface ESLintModule {
   CLIEngine: CLIEngineConstructor
   Linter: LinterConstructor
+  linter: ESLintLinter
 }
 
 type RunValues = 'onType' | 'onSave'

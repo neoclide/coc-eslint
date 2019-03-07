@@ -5,9 +5,9 @@
 'use strict'
 
 import * as path from 'path'
-import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, DidChangeWorkspaceFoldersNotification, ErrorCodes, ExecuteCommandRequest, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange, Files } from 'vscode-languageserver'
+import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import URI from 'vscode-uri'
-import { Is, TextDocumentSettings, CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport } from './types'
+import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
 import { getAllFixEdits, resolveModule } from './util'
 
 namespace CommandIds {
@@ -44,7 +44,7 @@ namespace NoConfigRequest {
     NoConfigResult,
     void,
     void
-    >('eslint/noConfig')
+  >('eslint/noConfig')
 }
 
 interface NoESLintLibraryParams {
@@ -59,7 +59,7 @@ namespace NoESLintLibraryRequest {
     NoESLintLibraryResult,
     void,
     void
-    >('eslint/noLibrary')
+  >('eslint/noLibrary')
 }
 
 function makeDiagnostic(problem: ESLintProblem): Diagnostic {
@@ -102,7 +102,7 @@ function computeKey(diagnostic: Diagnostic): string {
 let codeActions: Map<string, Map<string, AutoFix>> = new Map<
   string,
   Map<string, AutoFix>
-  >()
+>()
 function recordCodeAction(
   document: TextDocument,
   diagnostic: Diagnostic,
@@ -281,7 +281,7 @@ let path2Library: Map<string, ESLintModule> = new Map<string, ESLintModule>()
 let document2Settings: Map<string, Thenable<TextDocumentSettings>> = new Map<
   string,
   Thenable<TextDocumentSettings>
-  >()
+>()
 
 function resolveSettings(
   document: TextDocument
@@ -386,12 +386,12 @@ class BufferedMessageQueue {
       handler: RequestHandler<any, any, any>
       versionProvider?: VersionProvider<any>
     }
-    >
+  >
   private notificationHandlers: Map<
     string,
     { handler: NotificationHandler<any>; versionProvider?: VersionProvider<any> }
-    >
-  private timer: NodeJS.Timer | undefined
+  >
+  private timer: NodeJS.Immediate | undefined
 
   constructor(private connection: IConnection) {
     this.queue = []
@@ -478,6 +478,7 @@ class BufferedMessageQueue {
       let requestMessage = message
       if (requestMessage.token.isCancellationRequested) {
         requestMessage.reject(
+          // tslint:disable-next-line: no-inferred-empty-object-type
           new ResponseError(
             ErrorCodes.RequestCancelled,
             'Request got cancelled'
@@ -493,6 +494,7 @@ class BufferedMessageQueue {
         elem.versionProvider(requestMessage.params)
       ) {
         requestMessage.reject(
+          // tslint:disable-next-line: no-inferred-empty-object-type
           new ResponseError(
             ErrorCodes.RequestCancelled,
             'Request got cancelled'
@@ -536,7 +538,7 @@ namespace ValidateNotification {
   export const type: NotificationType<
     TextDocument,
     void
-    > = new NotificationType<TextDocument, void>('eslint/validate')
+  > = new NotificationType<TextDocument, void>('eslint/validate')
 }
 
 messageQueue.onNotification(
@@ -826,7 +828,7 @@ function validate(
 let noConfigReported: Map<string, ESLintModule> = new Map<
   string,
   ESLintModule
-  >()
+>()
 
 function isNoConfigFoundError(error: any): boolean {
   let candidate = error as ESLintError
@@ -863,7 +865,7 @@ function tryHandleNoConfig(
 let configErrorReported: Map<string, ESLintModule> = new Map<
   string,
   ESLintModule
-  >()
+>()
 
 function tryHandleConfigError(
   error: any,
@@ -910,7 +912,7 @@ function tryHandleConfigError(
 let missingModuleReported: Map<string, ESLintModule> = new Map<
   string,
   ESLintModule
-  >()
+>()
 
 function tryHandleMissingModule(
   error: any,
@@ -1195,7 +1197,7 @@ messageQueue.registerRequest(
         return {}
       }
       let textDocument = documents.get(identifier.uri)
-      let settings = await resolveSettings(textDocument)
+      let settings = await Promise.resolve(resolveSettings(textDocument))
       let edits = getAllFixEdits(textDocument, settings)
       if (edits && edits.length) {
         workspaceChange = new WorkspaceChange()
@@ -1210,7 +1212,7 @@ messageQueue.registerRequest(
       return {}
     }
     try {
-      let response = await connection.workspace.applyEdit(workspaceChange.edit)
+      let response = await Promise.resolve(connection.workspace.applyEdit(workspaceChange.edit))
       if (!response.applied) {
         connection.console.error(`Failed to apply command: ${params.command}`)
       }

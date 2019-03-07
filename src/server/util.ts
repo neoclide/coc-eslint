@@ -13,22 +13,21 @@ interface Change {
 export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
   let content = textDocument.getText()
   let newOptions: CLIOptions = Object.assign(
-    Object.create(null),
-    settings.options
+    {},
+    settings.options,
+    {
+      cwd: URI.parse(settings.workspaceFolder.uri).fsPath,
+      fix: true
+    },
   )
   let u = URI.parse(textDocument.uri)
   if (u.scheme != 'file') return []
   let filename = URI.parse(textDocument.uri).fsPath
   let engine = new settings.library.CLIEngine(newOptions)
-  let config = engine.getConfigForFile(filename)
-  let linter = new settings.library.Linter()
-
-  let { fixed, output } = linter.verifyAndFix(content, config, {
-    fix: true,
-    filename,
-    allowInlineConfig: true
-  })
-  if (!fixed) return []
+  let res = engine.executeOnText(content, filename)
+  if (!res.results.length) return []
+  let { output } = res.results[0]
+  if (output == null) return []
   let change = getChange(content, output)
   return [{
     range: {
