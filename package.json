@@ -9,7 +9,7 @@
     "eslint"
   ],
   "engines": {
-    "coc": "^0.0.15"
+    "coc": "^0.0.58"
   },
   "scripts": {
     "clean": "rimraf lib",
@@ -17,8 +17,7 @@
     "prepare": "yarn clean && yarn build"
   },
   "activationEvents": [
-    "onLanguage:javascript",
-    "onLanguage:javascriptreact"
+    "*"
   ],
   "contributes": {
     "commands": [
@@ -39,7 +38,8 @@
       "properties": {
         "eslint.enable": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "enable lint for files."
         },
         "eslint.trace.server": {
           "type": "string",

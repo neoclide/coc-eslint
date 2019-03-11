@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, LanguageClient, LanguageClientOptions, ServerOptions, services, ServiceStat, TransportKind, workspace, WorkspaceMiddleware } from 'coc.nvim'
+import { commands, ExtensionContext, LanguageClient, LanguageClientOptions, ServerOptions, services, ServiceStat, TransportKind, workspace, WorkspaceMiddleware, ConfigurationChangeEvent } from 'coc.nvim'
 import { ProviderResult } from 'coc.nvim/lib/provider'
 import fs from 'fs'
 import path from 'path'
@@ -63,7 +63,7 @@ namespace NoConfigRequest {
     NoConfigResult,
     void,
     void
-    >('eslint/noConfig')
+  >('eslint/noConfig')
 }
 
 interface NoESLintLibraryParams {
@@ -78,7 +78,7 @@ namespace NoESLintLibraryRequest {
     NoESLintLibraryResult,
     void,
     void
-    >('eslint/noLibrary')
+  >('eslint/noLibrary')
 }
 
 const exitCalled = new NotificationType<[number, string], void>('eslint/exitCalled')
@@ -116,9 +116,7 @@ function shouldBeValidated(textDocument: TextDocument): boolean {
 
 export async function activate(context: ExtensionContext): Promise<void> {
   let { subscriptions } = context
-  const config = workspace.getConfiguration().get('eslint', {}) as any
-  const enable = config.enable
-  if (enable === false) return
+  const config = workspace.getConfiguration().get<any>('eslint', {}) as any
   const filetypes = config.filetypes || ['javascript', 'javascriptreact']
   const selector: DocumentSelector = filetypes.reduce((res, filetype) => {
     return res.concat([{ language: filetype, scheme: 'file' }, { language: filetype, scheme: 'untitled' }])
@@ -220,7 +218,8 @@ export async function activate(context: ExtensionContext): Promise<void> {
     services.registLanguageClient(client)
   )
 
-  function onDidChangeConfiguration(): void {
+  function onDidChangeConfiguration(e: ConfigurationChangeEvent): void {
+    if (!e.affectsConfiguration('eslint')) return
     if (client.serviceState != ServiceStat.Running) return
     for (let textDocument of syncedDocuments.values()) {
       if (!shouldBeValidated(textDocument)) {
