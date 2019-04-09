@@ -192,21 +192,24 @@ export async function activate(context: ExtensionContext): Promise<void> {
         return next(document, range, newContext, token)
       },
       workspace: {
-        configuration: (_params, _token, _next): any => {
-          let config = workspace.getConfiguration('eslint')
-          let pm = config.get('packageManager', 'npm')
-          let settings: TextDocumentSettings = {
-            packageManager: pm === 'yarn' ? 'yarn' : 'npm',
-            validate: config.get('validate', true),
-            autoFix: config.get('autoFix', false),
-            autoFixOnSave: config.get('autoFixOnSave', false),
-            nodePath: config.get('nodePath', undefined),
-            options: config.get<Object>('options', {}),
-            run: config.get('run', 'onType'),
-            workspaceFolder: workspace.workspaceFolder,
-            workingDirectory: undefined
-          }
-          return [settings]
+        configuration: (params, _token, _next): any => {
+          return params.items.map(item => {
+            let uri = item.scopeUri
+            let config = workspace.getConfiguration('eslint', uri)
+            let pm = config.get('packageManager', 'npm')
+            let settings: TextDocumentSettings = {
+              packageManager: pm === 'yarn' ? 'yarn' : 'npm',
+              validate: config.get('validate', true),
+              autoFix: config.get('autoFix', false),
+              autoFixOnSave: config.get('autoFixOnSave', false),
+              nodePath: config.get('nodePath', undefined),
+              options: config.get<Object>('options', {}),
+              run: config.get('run', 'onType'),
+              workspaceFolder: workspace.workspaceFolder,
+              workingDirectory: undefined
+            }
+            return settings
+          })
         }
       } as WorkspaceMiddleware
     }

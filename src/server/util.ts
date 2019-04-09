@@ -11,17 +11,16 @@ interface Change {
 }
 
 export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
+  let u = URI.parse(textDocument.uri)
+  if (u.scheme != 'file') return []
   let content = textDocument.getText()
   let newOptions: CLIOptions = Object.assign(
     {},
     settings.options,
     {
-      cwd: URI.parse(settings.workspaceFolder.uri).fsPath,
       fix: true
     },
   )
-  let u = URI.parse(textDocument.uri)
-  if (u.scheme != 'file') return []
   let filename = URI.parse(textDocument.uri).fsPath
   let engine = new settings.library.CLIEngine(newOptions)
   let res = engine.executeOnText(content, filename)

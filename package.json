@@ -9,7 +9,7 @@
     "eslint"
   ],
   "engines": {
-    "coc": "^0.0.58"
+    "coc": "^0.0.64"
   },
   "scripts": {
     "clean": "rimraf lib",
@@ -95,6 +95,12 @@
           "type": "boolean",
           "default": true,
           "description": "Enable auto fix feature"
+        },
+        "eslint.options": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "description": "The eslint options object to provide args normally passed to eslint when executed from a command line (see http://eslint.org/docs/developer-guide/nodejs-api#cliengine)."
         },
         "eslint.autoFixOnSave": {
           "type": "boolean",
