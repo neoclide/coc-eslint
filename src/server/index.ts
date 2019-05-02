@@ -301,14 +301,13 @@ function resolveSettings(
       }
       let uri = URI.parse(document.uri)
       let promise: Thenable<string>
+      let directory: string
       if (uri.scheme === 'file') {
-        let file = uri.fsPath
-        let directory = path.dirname(file)
-        promise = resolveModule('eslint', directory, settings.resolvedGlobalPackageManagerPath)
+        directory = path.dirname(uri.fsPath)
       } else {
-        let localPath = settings.workspaceFolder ? settings.workspaceFolder.uri : undefined
-        promise = resolveModule('eslint', localPath, settings.resolvedGlobalPackageManagerPath)
+        directory = settings.workspaceFolder ? URI.parse(settings.workspaceFolder.uri).fsPath : undefined
       }
+      promise = resolveModule('eslint', directory, settings.resolvedGlobalPackageManagerPath)
       return promise.then(path => {
         let library = path2Library.get(path)
         if (!library) {
