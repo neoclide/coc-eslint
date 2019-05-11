@@ -4,6 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 'use strict'
 
+import * as os from 'os'
 import * as path from 'path'
 import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import URI from 'vscode-uri'
@@ -294,10 +295,19 @@ function resolveSettings(
   resultPromise = connection.workspace
     .getConfiguration({ scopeUri: uri, section: '' })
     .then((settings: TextDocumentSettings) => {
-      if (settings.packageManager === 'npm') {
-        settings.resolvedGlobalPackageManagerPath = globalNpmPath()
+      let nodePath: string
+      if (settings.nodePath) {
+        nodePath = settings.nodePath
+        if (nodePath.startsWith('~')) {
+          nodePath = nodePath.replace(/^~/, os.homedir())
+        }
+        if (!path.isAbsolute(nodePath)) {
+          nodePath = path.join(URI.parse(settings.workspaceFolder.uri).fsPath, nodePath)
+        }
+      } else if (settings.packageManager === 'npm') {
+        nodePath = globalNpmPath()
       } else if (settings.packageManager === 'yarn') {
-        settings.resolvedGlobalPackageManagerPath = globalYarnPath()
+        nodePath = globalYarnPath()
       }
       let uri = URI.parse(document.uri)
       let promise: Thenable<string>
@@ -307,7 +317,7 @@ function resolveSettings(
       } else {
         directory = settings.workspaceFolder ? URI.parse(settings.workspaceFolder.uri).fsPath : undefined
       }
-      promise = resolveModule('eslint', directory, settings.resolvedGlobalPackageManagerPath)
+      promise = resolveModule('eslint', directory, nodePath)
       return promise.then(path => {
         let library = path2Library.get(path)
         if (!library) {
