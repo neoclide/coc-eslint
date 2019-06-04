@@ -112,6 +112,7 @@ export namespace DirectoryItem {
 export interface TextDocumentSettings {
   validate: boolean
   packageManager: 'npm' | 'yarn'
+  quiet: boolean
   autoFix: boolean
   autoFixOnSave: boolean
   options: any | undefined

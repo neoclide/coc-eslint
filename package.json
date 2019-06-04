@@ -41,6 +41,11 @@
           "default": true,
           "description": "enable lint for files."
         },
+        "eslint.quiet": {
+          "type": "boolean",
+          "default": false,
+          "description": "Turns on quiet mode, which ignores warnings."
+        },
         "eslint.trace.server": {
           "type": "string",
           "default": "off",

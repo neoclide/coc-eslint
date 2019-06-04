@@ -815,6 +815,10 @@ function validate(
       if (docReport.messages && Array.isArray(docReport.messages)) {
         docReport.messages.forEach(problem => {
           if (problem) {
+            let isWarning = convertSeverity(problem.severity) == DiagnosticSeverity.Warning
+            if (isWarning && settings.quiet) {
+              return
+            }
             let diagnostic = makeDiagnostic(problem)
             diagnostics.push(diagnostic)
             if (settings.autoFix) {

@@ -25,6 +25,7 @@ In your vim/neovim run the following command:
 **Notice** these configuration settings allow you to configure the behaviour of the coc-eslint extension.
 
 - `eslint.enable`: enable/disable ESLint. This is enabled by default.
+- `eslint.quiet` - ignore warnings.
 - `eslint.packageManager`: controls the package manager to be used to resolve the ESLint library. This has only an influence if the ESLint library is resolved globally. Valid values are `"npm"` or `"yarn"`.
 - `eslint.options`: options to configure how ESLint is started using the [ESLint CLI Engine API](http://eslint.org/docs/developer-guide/nodejs-api#cliengine). Defaults to an empty option bag.
   An example to point to a custom `.eslintrc.json` file is:

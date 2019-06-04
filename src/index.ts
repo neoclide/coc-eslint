@@ -43,6 +43,7 @@ interface TextDocumentSettings {
   packageManager: 'npm' | 'yarn'
   autoFix: boolean
   autoFixOnSave: boolean
+  quiet: boolean
   options: any | undefined
   nodePath: string | undefined
   run: RunValues
@@ -199,6 +200,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
             let pm = config.get('packageManager', 'npm')
             let settings: TextDocumentSettings = {
               packageManager: pm === 'yarn' ? 'yarn' : 'npm',
+              quiet: config.get('quiet', false),
               validate: config.get('validate', true),
               autoFix: config.get('autoFix', false),
               autoFixOnSave: config.get('autoFixOnSave', false),
