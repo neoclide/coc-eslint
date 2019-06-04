@@ -37,7 +37,16 @@ In your vim/neovim run the following command:
 - `eslint.run` - run the linter `onSave` or `onType`. The Default is `onType`.
 - `eslint.autoFixOnSave` - enables auto fix on save.
 - `eslint.nodePath` - use this setting if an installed ESLint package can't be detected. For example `/myGlobalNodePackages/node_modules`.
-- `eslint.filetypes` - an array of language identifiers specifying the files to be validated. Something like `"eslint.validate": [ "javascript", "javascriptreact", "html" ]`. If the setting is missing, it defaults to `["javascript", "javascriptreact"]`.
+- `eslint.filetypes` - an array of language identifiers specifying the files to be validated.
+- `eslint.codeAction.disableRuleComment` - object with properties:
+  - `enable` - show disable lint rule in the quick fix menu. `true` by default.
+  - `location` - choose to either add the `eslint-disable` comment on the `separateLine` or `sameLine`. `separateLine` is the default.
+    Example:
+  ```json
+  {"enable": true, "location": "sameLine"}
+  ```
+- `eslint.codeAction.showDocumentation` - object with properties:
+  - `enable` - show open lint rule documentation web page in the quick fix menu. `true` by default.
 
 ## Auto-fixing
 

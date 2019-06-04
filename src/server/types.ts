@@ -1,6 +1,16 @@
 import { WorkspaceFolder } from 'vscode-languageserver'
 import { CLIEngine } from 'eslint'
 
+export interface CodeActionSettings {
+  disableRuleComment: {
+    enable: boolean
+    location: 'separateLine' | 'sameLine'
+  }
+  showDocumentation: {
+    enable: boolean
+  }
+}
+
 export interface ESLintError extends Error {
   messageTemplate?: string
   messageData?: {
@@ -122,4 +132,5 @@ export interface TextDocumentSettings {
   workingDirectory: DirectoryItem | undefined
   library: ESLintModule | undefined
   resolvedGlobalPackageManagerPath: string | undefined
+  codeAction: CodeActionSettings
 }

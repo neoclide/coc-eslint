@@ -6,7 +6,7 @@
 
 import * as os from 'os'
 import * as path from 'path'
-import { CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
+import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import URI from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
 import { getAllFixEdits, resolveModule } from './util'
@@ -16,6 +16,20 @@ namespace CommandIds {
   export const applySameFixes = 'eslint.applySameFixes'
   export const applyAllFixes = 'eslint.applyAllFixes'
   export const applyAutoFix = 'eslint.applyAutoFix'
+  export const applyDisableLine = 'eslint.applyDisableLine'
+  export const applyDisableFile = 'eslint.applyDisableFile'
+  export const openRuleDoc = 'eslint.openRuleDoc'
+}
+
+namespace OpenESLintDocRequest {
+  export const type = new RequestType<OpenESLintDocParams, OpenESLintDocResult, void, void>('eslint/openDoc')
+}
+
+interface OpenESLintDocParams {
+  url: string
+}
+
+interface OpenESLintDocResult {
 }
 
 enum Status {
@@ -63,6 +77,67 @@ namespace NoESLintLibraryRequest {
   >('eslint/noLibrary')
 }
 
+interface RuleCodeActions {
+  fixes: CodeAction[]
+  disable?: CodeAction
+  fixAll?: CodeAction
+  disableFile?: CodeAction
+  showDocumentation?: CodeAction
+}
+
+class CodeActionResult {
+  private _actions: Map<string, RuleCodeActions>
+  private _fixAll: CodeAction | undefined
+
+  public constructor() {
+    this._actions = new Map()
+  }
+
+  public get(ruleId: string): RuleCodeActions {
+    let result: RuleCodeActions = this._actions.get(ruleId)
+    if (result === undefined) {
+      result = { fixes: [] }
+      this._actions.set(ruleId, result)
+    }
+    return result
+  }
+
+  public set fixAll(action: CodeAction) {
+    this._fixAll = action
+  }
+
+  public all(): CodeAction[] {
+    let result: CodeAction[] = []
+    for (let actions of this._actions.values()) {
+      result.push(...actions.fixes)
+      if (actions.disable) {
+        result.push(actions.disable)
+      }
+      if (actions.fixAll) {
+        result.push(actions.fixAll)
+      }
+      if (actions.disableFile) {
+        result.push(actions.disableFile)
+      }
+      if (actions.showDocumentation) {
+        result.push(actions.showDocumentation)
+      }
+    }
+    if (this._fixAll !== undefined) {
+      result.push(this._fixAll)
+    }
+    return result
+  }
+
+  public get length(): number {
+    let result = 0
+    for (let actions of this._actions.values()) {
+      result += actions.fixes.length
+    }
+    return result
+  }
+}
+
 function makeDiagnostic(problem: ESLintProblem): Diagnostic {
   let message =
     problem.ruleId != null
@@ -86,11 +161,12 @@ function makeDiagnostic(problem: ESLintProblem): Diagnostic {
   }
 }
 
-interface AutoFix {
+interface FixableProblem {
   label: string
   documentVersion: number
   ruleId: string
-  edit: ESLintAutoFixEdit
+  line: number
+  edit?: ESLintAutoFixEdit
 }
 
 function computeKey(diagnostic: Diagnostic): string {
@@ -100,30 +176,25 @@ function computeKey(diagnostic: Diagnostic): string {
     }]-${diagnostic.code}`
 }
 
-let codeActions: Map<string, Map<string, AutoFix>> = new Map<
+let codeActions: Map<string, Map<string, FixableProblem>> = new Map<
   string,
-  Map<string, AutoFix>
+  Map<string, FixableProblem>
 >()
 function recordCodeAction(
   document: TextDocument,
   diagnostic: Diagnostic,
   problem: ESLintProblem
 ): void {
-  if (!problem.fix || !problem.ruleId) {
+  if (!problem.ruleId) {
     return
   }
   let uri = document.uri
-  let edits: Map<string, AutoFix> = codeActions.get(uri)
+  let edits: Map<string, FixableProblem> = codeActions.get(uri)
   if (!edits) {
-    edits = new Map<string, AutoFix>()
+    edits = new Map<string, FixableProblem>()
     codeActions.set(uri, edits)
   }
-  edits.set(computeKey(diagnostic), {
-    label: `Fix this ${problem.ruleId} problem`,
-    documentVersion: document.version,
-    ruleId: problem.ruleId,
-    edit: problem.fix
-  })
+  edits.set(computeKey(diagnostic), { label: `Fix this ${problem.ruleId} problem`, documentVersion: document.version, ruleId: problem.ruleId, edit: problem.fix, line: problem.line })
 }
 
 function convertSeverity(severity: number): DiagnosticSeverity {
@@ -283,6 +354,14 @@ let document2Settings: Map<string, Thenable<TextDocumentSettings>> = new Map<
   string,
   Thenable<TextDocumentSettings>
 >()
+
+let ruleDocData: {
+  handled: Set<string>
+  urls: Map<string, string>
+} = {
+  handled: new Set<string>(),
+  urls: new Map<string, string>()
+}
 
 function resolveSettings(
   document: TextDocument
@@ -670,7 +749,10 @@ connection.onInitialize(_params => {
           CommandIds.applySingleFix,
           CommandIds.applySameFixes,
           CommandIds.applyAllFixes,
-          CommandIds.applyAutoFix
+          CommandIds.applyAutoFix,
+          CommandIds.applyDisableLine,
+          CommandIds.applyDisableFile,
+          CommandIds.openRuleDoc,
         ]
       }
     }
@@ -762,15 +844,8 @@ function getMessage(err: any, document: TextDocument): string {
   return result
 }
 
-function validate(
-  document: TextDocument,
-  settings: TextDocumentSettings,
-  publishDiagnostics = true
-): void {
-  let newOptions: CLIOptions = Object.assign(
-    Object.create(null),
-    settings.options
-  )
+function validate(document: TextDocument, settings: TextDocumentSettings, publishDiagnostics = true): void {
+  let newOptions: CLIOptions = Object.assign(Object.create(null), settings.options)
   let content = document.getText()
   let uri = document.uri
   let file = getFilePath(document)
@@ -805,24 +880,27 @@ function validate(
     codeActions.delete(uri)
     let report: ESLintReport = cli.executeOnText(content, file)
     let diagnostics: Diagnostic[] = []
-    if (
-      report &&
-      report.results &&
-      Array.isArray(report.results) &&
-      report.results.length > 0
-    ) {
+    if (report && report.results && Array.isArray(report.results) && report.results.length > 0) {
       let docReport = report.results[0]
       if (docReport.messages && Array.isArray(docReport.messages)) {
         docReport.messages.forEach(problem => {
           if (problem) {
-            let isWarning = convertSeverity(problem.severity) == DiagnosticSeverity.Warning
-            if (isWarning && settings.quiet) {
+            const isWarning = convertSeverity(problem.severity) === DiagnosticSeverity.Warning
+            if (settings.quiet && isWarning) {
+              // Filter out warnings when quiet mode is enabled
               return
             }
             let diagnostic = makeDiagnostic(problem)
             diagnostics.push(diagnostic)
             if (settings.autoFix) {
-              recordCodeAction(document, diagnostic, problem)
+              if (typeof cli.getRules === 'function' && problem.ruleId !== undefined && problem.fix !== undefined) {
+                let rule = cli.getRules().get(problem.ruleId)
+                if (rule !== undefined && rule.meta && typeof rule.meta.fixable == 'string') {
+                  recordCodeAction(document, diagnostic, problem)
+                }
+              } else {
+                recordCodeAction(document, diagnostic, problem)
+              }
             }
           }
         })
@@ -831,13 +909,22 @@ function validate(
     if (publishDiagnostics) {
       connection.sendDiagnostics({ uri, diagnostics })
     }
+
+    // cache documentation urls for all rules
+    if (typeof cli.getRules === 'function' && !ruleDocData.handled.has(uri)) {
+      ruleDocData.handled.add(uri)
+      cli.getRules().forEach((rule, key) => {
+        if (rule.meta && rule.meta.docs && Is.string(rule.meta.docs.url)) {
+          ruleDocData.urls.set(key, rule.meta.docs.url)
+        }
+      })
+    }
   } finally {
     if (cwd !== process.cwd()) {
       process.chdir(cwd)
     }
   }
 }
-
 let noConfigReported: Map<string, ESLintModule> = new Map<
   string,
   ESLintModule
@@ -1027,9 +1114,9 @@ messageQueue.registerNotification(
 )
 
 class Fixes {
-  constructor(private edits: Map<string, AutoFix>) { }
+  constructor(private edits: Map<string, FixableProblem>) { }
 
-  public static overlaps(lastEdit: AutoFix, newEdit: AutoFix): boolean {
+  public static overlaps(lastEdit: FixableProblem, newEdit: FixableProblem): boolean {
     return !!lastEdit && lastEdit.edit.range[1] > newEdit.edit.range[0]
   }
 
@@ -1044,8 +1131,8 @@ class Fixes {
     return this.edits.values().next().value.documentVersion
   }
 
-  public getScoped(diagnostics: Diagnostic[]): AutoFix[] {
-    let result: AutoFix[] = []
+  public getScoped(diagnostics: Diagnostic[]): FixableProblem[] {
+    let result: FixableProblem[] = []
     for (let diagnostic of diagnostics) {
       let key = computeKey(diagnostic)
       let editInfo = this.edits.get(key)
@@ -1056,8 +1143,8 @@ class Fixes {
     return result
   }
 
-  public getAllSorted(): AutoFix[] {
-    let result: AutoFix[] = []
+  public getAllSorted(): FixableProblem[] {
+    let result: FixableProblem[] = []
     this.edits.forEach(value => result.push(value))
     return result.sort((a, b) => {
       let d = a.edit.range[0] - b.edit.range[0]
@@ -1074,13 +1161,13 @@ class Fixes {
     })
   }
 
-  public getOverlapFree(): AutoFix[] {
+  public getOverlapFree(): FixableProblem[] {
     let sorted = this.getAllSorted()
     if (sorted.length <= 1) {
       return sorted
     }
-    let result: AutoFix[] = []
-    let last: AutoFix = sorted[0]
+    let result: FixableProblem[] = []
+    let last: FixableProblem = sorted[0]
     result.push(last)
     for (let i = 1; i < sorted.length; i++) {
       let current = sorted[i]
@@ -1098,33 +1185,34 @@ messageQueue.registerRequest(
   CodeActionRequest.type,
   params => {
     commands = new Map<string, WorkspaceChange>()
-    let result: CodeAction[] = []
+    let result: CodeActionResult = new CodeActionResult()
     let uri = params.textDocument.uri
     let edits = codeActions.get(uri)
-    if (!edits) {
-      return result
-    }
-
+    if (!edits) return []
     let fixes = new Fixes(edits)
-    if (fixes.isEmpty()) {
-      return result
-    }
+    if (fixes.isEmpty()) return []
 
     let textDocument = documents.get(uri)
     let documentVersion = -1
-    let ruleId: string
+    let allFixableRuleIds: string[] = []
 
-    function createTextEdit(editInfo: AutoFix): TextEdit {
-      return TextEdit.replace(
-        Range.create(
-          textDocument.positionAt(editInfo.edit.range[0]),
-          textDocument.positionAt(editInfo.edit.range[1])
-        ),
-        editInfo.edit.text || ''
-      )
+    function createTextEdit(editInfo: FixableProblem): TextEdit {
+      return TextEdit.replace(Range.create(textDocument.positionAt(editInfo.edit.range[0]), textDocument.positionAt(editInfo.edit.range[1])), editInfo.edit.text || '')
     }
 
-    function getLastEdit(array: AutoFix[]): AutoFix {
+    function createDisableLineTextEdit(editInfo: FixableProblem, indentationText: string): TextEdit {
+      return TextEdit.insert(Position.create(editInfo.line - 1, 0), `${indentationText}// eslint-disable-next-line ${editInfo.ruleId}\n`)
+    }
+
+    function createDisableSameLineTextEdit(editInfo: FixableProblem): TextEdit {
+      return TextEdit.insert(Position.create(editInfo.line - 1, Number.MAX_VALUE), ` // eslint-disable-line ${editInfo.ruleId}`)
+    }
+
+    function createDisableFileTextEdit(editInfo: FixableProblem): TextEdit {
+      return TextEdit.insert(Position.create(0, 0), `/* eslint-disable ${editInfo.ruleId} */\n`)
+    }
+
+    function getLastEdit(array: FixableProblem[]): FixableProblem {
       let length = array.length
       if (length === 0) {
         return undefined
@@ -1132,67 +1220,114 @@ messageQueue.registerRequest(
       return array[length - 1]
     }
 
-    for (let editInfo of fixes.getScoped(params.context.diagnostics)) {
-      documentVersion = editInfo.documentVersion
-      ruleId = editInfo.ruleId
-      let workspaceChange = new WorkspaceChange()
-      workspaceChange
-        .getTextEditChange({ uri, version: documentVersion })
-        .add(createTextEdit(editInfo))
-      commands.set(CommandIds.applySingleFix, workspaceChange)
-      result.push(
-        CodeAction.create(
-          editInfo.label,
-          Command.create(editInfo.label, CommandIds.applySingleFix),
-          CodeActionKind.QuickFix
-        )
-      )
-    }
+    return resolveSettings(textDocument).then(settings => {
+      for (let editInfo of fixes.getScoped(params.context.diagnostics)) {
+        documentVersion = editInfo.documentVersion
+        let ruleId = editInfo.ruleId
+        allFixableRuleIds.push(ruleId)
 
-    if (result.length > 0) {
-      let same: AutoFix[] = []
-      let all: AutoFix[] = []
+        if (!!editInfo.edit) {
+          let workspaceChange = new WorkspaceChange()
+          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createTextEdit(editInfo))
+          commands.set(`${CommandIds.applySingleFix}:${ruleId}`, workspaceChange)
+          result.get(ruleId).fixes.push(CodeAction.create(
+            editInfo.label,
+            Command.create(editInfo.label, CommandIds.applySingleFix, ruleId),
+            CodeActionKind.QuickFix
+          ))
+        }
 
-      for (let editInfo of fixes.getAllSorted()) {
-        if (documentVersion === -1) {
-          documentVersion = editInfo.documentVersion
+        if (settings.codeAction.disableRuleComment.enable) {
+          let workspaceChange = new WorkspaceChange()
+          if (settings.codeAction.disableRuleComment.location === 'sameLine') {
+            workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableSameLineTextEdit(editInfo))
+          } else {
+            let lineText = textDocument.getText(Range.create(Position.create(editInfo.line - 1, 0), Position.create(editInfo.line - 1, Number.MAX_VALUE)))
+            let indentationText = /^([ \t]*)/.exec(lineText)[1]
+            workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableLineTextEdit(editInfo, indentationText))
+          }
+          commands.set(`${CommandIds.applyDisableLine}:${ruleId}`, workspaceChange)
+          let title = `Disable ${ruleId} for this line`
+          result.get(ruleId).disable = CodeAction.create(
+            title,
+            Command.create(title, CommandIds.applyDisableLine, ruleId),
+            CodeActionKind.QuickFix
+          )
+
+          if (result.get(ruleId).disableFile === undefined) {
+            workspaceChange = new WorkspaceChange()
+            workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableFileTextEdit(editInfo))
+            commands.set(`${CommandIds.applyDisableFile}:${ruleId}`, workspaceChange)
+            title = `Disable ${ruleId} for the entire file`
+            result.get(ruleId).disableFile = CodeAction.create(
+              title,
+              Command.create(title, CommandIds.applyDisableFile, ruleId),
+              CodeActionKind.QuickFix
+            )
+          }
         }
-        if (
-          editInfo.ruleId === ruleId &&
-          !Fixes.overlaps(getLastEdit(same), editInfo)
-        ) {
-          same.push(editInfo)
-        }
-        if (!Fixes.overlaps(getLastEdit(all), editInfo)) {
-          all.push(editInfo)
+
+        if (settings.codeAction.showDocumentation.enable && result.get(ruleId).showDocumentation === undefined) {
+          if (ruleDocData.urls.has(ruleId)) {
+            let title = `Show documentation for ${ruleId}`
+            result.get(ruleId).showDocumentation = CodeAction.create(
+              title,
+              Command.create(title, CommandIds.openRuleDoc, ruleId),
+              CodeActionKind.QuickFix
+            )
+          }
         }
       }
-      if (same.length > 1) {
-        let sameFixes: WorkspaceChange = new WorkspaceChange()
-        let sameTextChange = sameFixes.getTextEditChange({
-          uri,
-          version: documentVersion
+
+      if (result.length > 0) {
+        let sameProblems: Map<string, FixableProblem[]> = new Map<string, FixableProblem[]>(allFixableRuleIds.map<[string, FixableProblem[]]>(s => [s, []]))
+        let all: FixableProblem[] = []
+
+        for (let editInfo of fixes.getAllSorted()) {
+          if (documentVersion === -1) {
+            documentVersion = editInfo.documentVersion
+          }
+          if (sameProblems.has(editInfo.ruleId)) {
+            let same = sameProblems.get(editInfo.ruleId)
+            if (!Fixes.overlaps(getLastEdit(same), editInfo)) {
+              same.push(editInfo)
+            }
+          }
+          if (!Fixes.overlaps(getLastEdit(all), editInfo)) {
+            all.push(editInfo)
+          }
+        }
+        sameProblems.forEach((same, ruleId) => {
+          if (same.length > 1) {
+            let sameFixes: WorkspaceChange = new WorkspaceChange()
+            let sameTextChange = sameFixes.getTextEditChange({ uri, version: documentVersion })
+            same.map(createTextEdit).forEach(edit => sameTextChange.add(edit))
+            commands.set(CommandIds.applySameFixes, sameFixes)
+            let title = `Fix all ${ruleId} problems`
+            let command = Command.create(title, CommandIds.applySameFixes)
+            result.get(ruleId).fixAll = CodeAction.create(
+              title,
+              command,
+              CodeActionKind.QuickFix
+            )
+          }
         })
-        same.map(createTextEdit).forEach(edit => sameTextChange.add(edit))
-        commands.set(CommandIds.applySameFixes, sameFixes)
-        let title = `Fix all ${ruleId} problems`
-        let command = Command.create(title, CommandIds.applySameFixes)
-        result.push(CodeAction.create(title, command, CodeActionKind.QuickFix))
+        if (all.length > 1) {
+          let allFixes: WorkspaceChange = new WorkspaceChange()
+          let allTextChange = allFixes.getTextEditChange({ uri, version: documentVersion })
+          all.map(createTextEdit).forEach(edit => allTextChange.add(edit))
+          commands.set(CommandIds.applyAllFixes, allFixes)
+          let title = `Fix all auto-fixable problems`
+          let command = Command.create(title, CommandIds.applyAllFixes)
+          result.fixAll = CodeAction.create(
+            title,
+            command,
+            CodeActionKind.QuickFix
+          )
+        }
       }
-      if (all.length > 1) {
-        let allFixes: WorkspaceChange = new WorkspaceChange()
-        let allTextChange = allFixes.getTextEditChange({
-          uri,
-          version: documentVersion
-        })
-        all.map(createTextEdit).forEach(edit => allTextChange.add(edit))
-        commands.set(CommandIds.applyAllFixes, allFixes)
-        let title = `Fix all auto-fixable problems`
-        let command = Command.create(title, CommandIds.applyAllFixes)
-        result.push(CodeAction.create(title, command, CodeActionKind.QuickFix))
-      }
-    }
-    return result
+      return result.all()
+    })
   },
   (params): number => {
     let document = documents.get(params.textDocument.uri)
@@ -1218,7 +1353,18 @@ messageQueue.registerRequest(
         edits.forEach(edit => textChange.add(edit))
       }
     } else {
-      workspaceChange = commands.get(params.command)
+      if ([CommandIds.applySingleFix, CommandIds.applyDisableLine, CommandIds.applyDisableFile].indexOf(params.command) !== -1) {
+        let ruleId = params.arguments[0]
+        workspaceChange = commands.get(`${params.command}:${ruleId}`)
+      } else if (params.command === CommandIds.openRuleDoc) {
+        let ruleId = params.arguments[0]
+        let url = ruleDocData.urls.get(ruleId)
+        if (url) {
+          connection.sendRequest(OpenESLintDocRequest.type, { url })
+        }
+      } else {
+        workspaceChange = commands.get(params.command)
+      }
     }
 
     if (!workspaceChange) {

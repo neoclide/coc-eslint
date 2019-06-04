@@ -110,6 +110,44 @@
         "eslint.autoFixOnSave": {
           "type": "boolean",
           "default": false
+        },
+        "eslint.codeAction.disableRuleComment": {
+          "scope": "resource",
+          "type": "object",
+          "default": {
+            "enable": true,
+            "location": "separateLine"
+          },
+          "properties": {
+            "enable": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show the disable code actions."
+            },
+            "location": {
+              "type": "string",
+              "enum": [
+                "separateLine",
+                "sameLine"
+              ],
+              "default": "separateLine",
+              "description": "Configure the disable rule code action to insert the comment on the same line or a new line."
+            }
+          }
+        },
+        "eslint.codeAction.showDocumentation": {
+          "scope": "resource",
+          "type": "object",
+          "default": {
+            "enable": true
+          },
+          "properties": {
+            "enable": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show the documentation code actions."
+            }
+          }
         }
       }
     }
@@ -122,10 +160,10 @@
     "@types/eslint": "^4.16.6",
     "@types/fast-diff": "^1.2.0",
     "@types/node": "^11.10.5",
-    "coc.nvim": "^0.0.58",
+    "coc.nvim": "^0.0.68",
     "rimraf": "^2.6.3",
     "tslint": "^5.13.1",
-    "typescript": "^3.3.3333"
+    "typescript": "^3.4.4"
   },
   "dependencies": {
     "eslint": "^5.15.1",

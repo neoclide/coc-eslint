@@ -24,6 +24,28 @@ interface DirectoryItem {
   changeProcessCWD?: boolean
 }
 
+interface OpenESLintDocParams {
+  url: string
+}
+
+interface OpenESLintDocResult {
+
+}
+
+namespace OpenESLintDocRequest {
+  export const type = new RequestType<OpenESLintDocParams, OpenESLintDocResult, void, void>('eslint/openDoc')
+}
+
+interface CodeActionSettings {
+  disableRuleComment: {
+    enable: boolean
+    location: 'separateLine' | 'sameLine'
+  }
+  showDocumentation: {
+    enable: boolean
+  }
+}
+
 namespace DirectoryItem {
   export function is(item: any): item is DirectoryItem {
     let candidate = item as DirectoryItem
@@ -49,6 +71,7 @@ interface TextDocumentSettings {
   run: RunValues
   workspaceFolder: WorkspaceFolder | undefined
   workingDirectory: DirectoryItem | undefined
+  codeAction: CodeActionSettings
 }
 
 interface NoConfigParams {
@@ -208,7 +231,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
               options: config.get<Object>('options', {}),
               run: config.get('run', 'onType'),
               workspaceFolder: workspace.workspaceFolder,
-              workingDirectory: undefined
+              workingDirectory: undefined,
+              codeAction: {
+                disableRuleComment: config.get('codeAction.disableRuleComment', { enable: true, location: 'separateLine' as 'separateLine' }),
+                showDocumentation: config.get('codeAction.showDocumentation', { enable: true })
+              }
             }
             return settings
           })
@@ -288,6 +315,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
       workspace.showMessage(`Failed to load the ESLint library for the document ${uri.fsPath}`, 'warning')
       return {}
     })
+    client.onRequest(OpenESLintDocRequest.type, async params => {
+      await commands.executeCommand('vscode.open', Uri.parse(params.url))
+      return {}
+    })
+
     workspace.onDidChangeConfiguration(onDidChangeConfiguration, null, subscriptions)
   }, _e => {
     // noop
