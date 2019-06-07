@@ -1,9 +1,8 @@
-import { commands, ExtensionContext, LanguageClient, LanguageClientOptions, ServerOptions, services, ServiceStat, TransportKind, workspace, WorkspaceMiddleware, ConfigurationChangeEvent } from 'coc.nvim'
+import { Uri, commands, ExtensionContext, LanguageClient, LanguageClientOptions, ServerOptions, services, ServiceStat, TransportKind, workspace, WorkspaceMiddleware, ConfigurationChangeEvent } from 'coc.nvim'
 import { ProviderResult } from 'coc.nvim/lib/provider'
 import fs from 'fs'
 import path from 'path'
 import { CodeAction, CodeActionContext, Command, Diagnostic, DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, DocumentSelector, ExecuteCommandParams, ExecuteCommandRequest, NotificationType, RequestType, TextDocument, TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkspaceFolder } from 'vscode-languageserver-protocol'
-import Uri from 'vscode-uri'
 import { findEslint } from './utils'
 
 const defaultLanguages = ['javascript', 'javascriptreact']

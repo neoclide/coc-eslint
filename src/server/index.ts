@@ -7,7 +7,7 @@
 import * as os from 'os'
 import * as path from 'path'
 import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
-import URI from 'vscode-uri'
+import { Uri as URI } from 'coc.nvim'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
 import { getAllFixEdits, resolveModule } from './util'
 
