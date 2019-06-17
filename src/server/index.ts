@@ -7,9 +7,12 @@
 import * as os from 'os'
 import * as path from 'path'
 import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
-import { Uri as URI } from 'coc.nvim'
+import { URI } from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
 import { getAllFixEdits, resolveModule } from './util'
+declare var __webpack_require__: any
+declare var __non_webpack_require__: any
+const requireFunc = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require
 
 namespace CommandIds {
   export const applySingleFix = 'eslint.applySingleFix'
@@ -400,7 +403,7 @@ function resolveSettings(
       return promise.then(path => {
         let library = path2Library.get(path)
         if (!library) {
-          library = require(path)
+          library = requireFunc(path)
           if (!library.CLIEngine) {
             settings.validate = false
             connection.console.error(

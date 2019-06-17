@@ -1,7 +1,7 @@
 import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
 import { CLIOptions, TextDocumentSettings } from './types'
-import { Uri } from 'coc.nvim'
+import { URI } from 'vscode-uri'
 import resolveFrom from 'resolve-from'
 
 interface Change {
@@ -11,7 +11,7 @@ interface Change {
 }
 
 export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
-  let u = Uri.parse(textDocument.uri)
+  let u = URI.parse(textDocument.uri)
   if (u.scheme != 'file') return []
   let content = textDocument.getText()
   let newOptions: CLIOptions = Object.assign(
@@ -21,7 +21,7 @@ export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumen
       fix: true
     },
   )
-  let filename = Uri.parse(textDocument.uri).fsPath
+  let filename = URI.parse(textDocument.uri).fsPath
   let engine = new settings.library.CLIEngine(newOptions)
   let res = engine.executeOnText(content, filename)
   if (!res.results.length) return []
