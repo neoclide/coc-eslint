@@ -1,19 +1,36 @@
 const path = require('path')
 
 module.exports = {
-  entry: './lib/index',
+  entry: {
+    index: './src/index.ts',
+    server: './server/index.ts'
+  },
   target: 'node',
   mode: 'none',
   resolve: {
     mainFields: ['module', 'main'],
-    extensions: ['.js']
+    extensions: ['.js', '.ts']
   },
   externals: {
     'coc.nvim': 'commonjs coc.nvim'
   },
+  module: {
+    rules: [{
+      test: /\.ts$/,
+      exclude: /node_modules/,
+      use: [{
+        loader: 'ts-loader',
+        options: {
+          compilerOptions: {
+            "sourceMap": true,
+          }
+        }
+      }]
+    }]
+  },
   output: {
-    path: path.resolve(__dirname, '.release/lib'),
-    filename: 'index.js',
+    path: path.resolve(__dirname, 'lib'),
+    filename: '[name].js',
     libraryTarget: "commonjs",
   },
   plugins: [
