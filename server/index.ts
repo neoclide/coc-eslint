@@ -772,17 +772,17 @@ function getMessage(err: any, document: TextDocument): string {
 }
 
 function validate(document: TextDocument, settings: TextDocumentSettings, publishDiagnostics = true): void {
-  let newOptions: CLIOptions = Object.assign(Object.create(null), settings.options)
-  let content = document.getText()
-  let uri = document.uri
+  const uri = document.uri
+  const content = document.getText()
+  const newOptions: CLIOptions = Object.assign(Object.create(null), settings.options)
   executeInWorkspaceDirectory(document, settings, newOptions, (file: string, options: CLIOptions) => {
-    let cli = new settings.library.CLIEngine(options)
+    const cli = new settings.library.CLIEngine(options)
     // Clean previously computed code actions.
     codeActions.delete(uri)
-    let report: ESLintReport = cli.executeOnText(content, file)
-    let diagnostics: Diagnostic[] = []
+    const report: ESLintReport = cli.executeOnText(content, file)
+    const diagnostics: Diagnostic[] = []
     if (report && report.results && Array.isArray(report.results) && report.results.length > 0) {
-      let docReport = report.results[0]
+      const docReport = report.results[0]
       if (docReport.messages && Array.isArray(docReport.messages)) {
         docReport.messages.forEach(problem => {
           if (problem) {
@@ -791,11 +791,11 @@ function validate(document: TextDocument, settings: TextDocumentSettings, publis
               // Filter out warnings when quiet mode is enabled
               return
             }
-            let diagnostic = makeDiagnostic(problem)
+            const diagnostic = makeDiagnostic(problem)
             diagnostics.push(diagnostic)
             if (settings.autoFix) {
               if (typeof cli.getRules === 'function' && problem.ruleId !== undefined && problem.fix !== undefined) {
-                let rule = cli.getRules().get(problem.ruleId)
+                const rule = cli.getRules().get(problem.ruleId)
                 if (rule !== undefined && rule.meta && typeof rule.meta.fixable == 'string') {
                   recordCodeAction(document, diagnostic, problem)
                 }
