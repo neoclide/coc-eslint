@@ -87,31 +87,28 @@ export function getFilePath(documentOrUri: string | TextDocument): string {
   return getFileSystemPath(uri)
 }
 
-export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
-  let u = URI.parse(textDocument.uri)
-  if (u.scheme != 'file') return []
-  let content = textDocument.getText()
-  let newOptions: CLIOptions = Object.assign(
-    {},
-    settings.options,
-    {
-      fix: true
-    },
-  )
-  let filename = URI.parse(textDocument.uri).fsPath
-  let engine = new settings.library.CLIEngine(newOptions)
-  let res = engine.executeOnText(content, filename)
-  if (!res.results.length) return []
-  let { output } = res.results[0]
-  if (output == null) return []
-  let change = getChange(content, output)
-  return [{
-    range: {
-      start: textDocument.positionAt(change.start),
-      end: textDocument.positionAt(change.end)
-    },
-    newText: change.newText
-  }]
+export function getAllFixEdits(document: TextDocument, settings: TextDocumentSettings): TextEdit[] {
+  const uri = URI.parse(document.uri)
+  if (uri.scheme != 'file') return []
+  const content = document.getText()
+  const newOptions: CLIOptions = {...settings.options, fix: true}
+  return executeInWorkspaceDirectory(document, settings, newOptions, (filename: string, options: CLIOptions) => {
+    const engine = new settings.library.CLIEngine(options)
+    const res = engine.executeOnText(content, filename)
+    if (!res.results.length) return []
+
+    const { output } = res.results[0]
+    if (output == null) return []
+
+    const change = getChange(content, output)
+    return [{
+      range: {
+        start: document.positionAt(change.start),
+        end: document.positionAt(change.end)
+      },
+      newText: change.newText
+    }]
+  })
 }
 
 export function getChange(oldStr: string, newStr: string): Change {
@@ -156,37 +153,31 @@ export function resolveModule(name: string, localPath: string, globalPath: strin
   }
 }
 
-export function executeInWorkspaceDirectory(document: TextDocument, settings: TextDocumentSettings, newOptions: CLIOptions, callback: Function): void {
-  let file = getFilePath(document)
-  let cwd = process.cwd()
-
+export function executeInWorkspaceDirectory(document: TextDocument, settings: TextDocumentSettings, newOptions: CLIOptions, callback: Function): TextEdit[] {
+  const filename = getFilePath(document)
+  const cwd = process.cwd()
   try {
-    if (file) {
+    if (filename) {
       if (settings.workingDirectory) {
         newOptions.cwd = settings.workingDirectory.directory
         if (settings.workingDirectory.changeProcessCWD) {
           process.chdir(settings.workingDirectory.directory)
         }
       } else if (settings.workspaceFolder) {
-        let workspaceFolderUri = URI.parse(settings.workspaceFolder.uri)
+        const workspaceFolderUri = URI.parse(settings.workspaceFolder.uri)
         if (workspaceFolderUri.scheme === 'file') {
           const fsPath = getFileSystemPath(workspaceFolderUri)
           newOptions.cwd = fsPath
           process.chdir(fsPath)
         }
-      } else if (!settings.workspaceFolder && !isUNC(file)) {
-        let directory = path.dirname(file)
-        if (directory) {
-          if (path.isAbsolute(directory)) {
-            newOptions.cwd = directory
-          }
-        }
+      } else if (!settings.workspaceFolder && !isUNC(filename)) {
+        const directory = path.dirname(filename)
+        if (directory && path.isAbsolute(directory)) newOptions.cwd = directory
       }
     }
-    callback(file, newOptions)
+
+    return callback(filename, newOptions)
   } finally {
-    if (cwd !== process.cwd()) {
-      process.chdir(cwd)
-    }
+    if (cwd !== process.cwd()) process.chdir(cwd)
   }
 }
