@@ -9,7 +9,7 @@ import * as path from 'path'
 import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import { URI } from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
-import { getAllFixEdits, resolveModule } from './util'
+import { getAllFixEdits, getFilePath, getFileSystemPath, isUNC, resolveModule } from './util'
 declare var __webpack_require__: any
 declare var __non_webpack_require__: any
 const requireFunc = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require
@@ -210,82 +210,6 @@ function convertSeverity(severity: number): DiagnosticSeverity {
     default:
       return DiagnosticSeverity.Error
   }
-}
-
-const enum CharCode {
-  /**
-   * The `\` character.
-   */
-  Backslash = 92
-}
-
-/**
- * Check if the path follows this pattern: `\\hostname\sharename`.
- *
- * @see https://msdn.microsoft.com/en-us/library/gg465305.aspx
- * @return A boolean indication if the path is a UNC path, on none-windows
- * always false.
- */
-function isUNC(path: string): boolean {
-  if (process.platform !== 'win32') {
-    // UNC is a windows concept
-    return false
-  }
-
-  if (!path || path.length < 5) {
-    // at least \\a\b
-    return false
-  }
-
-  let code = path.charCodeAt(0)
-  if (code !== CharCode.Backslash) {
-    return false
-  }
-  code = path.charCodeAt(1)
-  if (code !== CharCode.Backslash) {
-    return false
-  }
-  let pos = 2
-  let start = pos
-  for (; pos < path.length; pos++) {
-    code = path.charCodeAt(pos)
-    if (code === CharCode.Backslash) {
-      break
-    }
-  }
-  if (start === pos) {
-    return false
-  }
-  code = path.charCodeAt(pos + 1)
-  if (isNaN(code) || code === CharCode.Backslash) {
-    return false
-  }
-  return true
-}
-
-function getFileSystemPath(uri: URI): string {
-  let result = uri.fsPath
-  if (process.platform === 'win32' && result.length >= 2 && result[1] === ':') {
-    // Node by default uses an upper case drive letter and ESLint uses
-    // === to compare pathes which results in the equal check failing
-    // if the drive letter is lower case in th URI. Ensure upper case.
-    return result[0].toUpperCase() + result.substr(1)
-  } else {
-    return result
-  }
-}
-
-function getFilePath(documentOrUri: string | TextDocument): string {
-  if (!documentOrUri) {
-    return undefined
-  }
-  let uri = Is.string(documentOrUri)
-    ? URI.parse(documentOrUri)
-    : URI.parse(documentOrUri.uri)
-  if (uri.scheme !== 'file') {
-    return undefined
-  }
-  return getFileSystemPath(uri)
 }
 
 const exitCalled = new NotificationType<[number, string], void>(

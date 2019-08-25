@@ -1,6 +1,6 @@
 import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
-import { CLIOptions, TextDocumentSettings } from './types'
+import { CLIOptions, Is, TextDocumentSettings } from './types'
 import { URI } from 'vscode-uri'
 import resolveFrom from 'resolve-from'
 
@@ -8,6 +8,82 @@ interface Change {
   start: number
   end: number
   newText: string
+}
+
+const enum CharCode {
+  /**
+   * The `\` character.
+   */
+  Backslash = 92
+}
+
+/**
+ * Check if the path follows this pattern: `\\hostname\sharename`.
+ *
+ * @see https://msdn.microsoft.com/en-us/library/gg465305.aspx
+ * @return A boolean indication if the path is a UNC path, on none-windows
+ * always false.
+ */
+export function isUNC(path: string): boolean {
+  if (process.platform !== 'win32') {
+    // UNC is a windows concept
+    return false
+  }
+
+  if (!path || path.length < 5) {
+    // at least \\a\b
+    return false
+  }
+
+  let code = path.charCodeAt(0)
+  if (code !== CharCode.Backslash) {
+    return false
+  }
+  code = path.charCodeAt(1)
+  if (code !== CharCode.Backslash) {
+    return false
+  }
+  let pos = 2
+  let start = pos
+  for (; pos < path.length; pos++) {
+    code = path.charCodeAt(pos)
+    if (code === CharCode.Backslash) {
+      break
+    }
+  }
+  if (start === pos) {
+    return false
+  }
+  code = path.charCodeAt(pos + 1)
+  if (isNaN(code) || code === CharCode.Backslash) {
+    return false
+  }
+  return true
+}
+
+export function getFileSystemPath(uri: URI): string {
+  let result = uri.fsPath
+  if (process.platform === 'win32' && result.length >= 2 && result[1] === ':') {
+    // Node by default uses an upper case drive letter and ESLint uses
+    // === to compare pathes which results in the equal check failing
+    // if the drive letter is lower case in th URI. Ensure upper case.
+    return result[0].toUpperCase() + result.substr(1)
+  } else {
+    return result
+  }
+}
+
+export function getFilePath(documentOrUri: string | TextDocument): string {
+  if (!documentOrUri) {
+    return undefined
+  }
+  let uri = Is.string(documentOrUri)
+    ? URI.parse(documentOrUri)
+    : URI.parse(documentOrUri.uri)
+  if (uri.scheme !== 'file') {
+    return undefined
+  }
+  return getFileSystemPath(uri)
 }
 
 export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
