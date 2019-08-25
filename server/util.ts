@@ -1,3 +1,4 @@
+import * as path from 'path'
 import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
 import { CLIOptions, Is, TextDocumentSettings } from './types'
@@ -61,7 +62,7 @@ export function isUNC(path: string): boolean {
   return true
 }
 
-export function getFileSystemPath(uri: URI): string {
+function getFileSystemPath(uri: URI): string {
   let result = uri.fsPath
   if (process.platform === 'win32' && result.length >= 2 && result[1] === ':') {
     // Node by default uses an upper case drive letter and ESLint uses
@@ -152,5 +153,40 @@ export function resolveModule(name: string, localPath: string, globalPath: strin
     return Promise.resolve(path)
   } catch (e) {
     return Promise.reject(e)
+  }
+}
+
+export function executeInWorkspaceDirectory(document: TextDocument, settings: TextDocumentSettings, newOptions: CLIOptions, callback: Function): void {
+  let file = getFilePath(document)
+  let cwd = process.cwd()
+
+  try {
+    if (file) {
+      if (settings.workingDirectory) {
+        newOptions.cwd = settings.workingDirectory.directory
+        if (settings.workingDirectory.changeProcessCWD) {
+          process.chdir(settings.workingDirectory.directory)
+        }
+      } else if (settings.workspaceFolder) {
+        let workspaceFolderUri = URI.parse(settings.workspaceFolder.uri)
+        if (workspaceFolderUri.scheme === 'file') {
+          const fsPath = getFileSystemPath(workspaceFolderUri)
+          newOptions.cwd = fsPath
+          process.chdir(fsPath)
+        }
+      } else if (!settings.workspaceFolder && !isUNC(file)) {
+        let directory = path.dirname(file)
+        if (directory) {
+          if (path.isAbsolute(directory)) {
+            newOptions.cwd = directory
+          }
+        }
+      }
+    }
+    callback(file, newOptions)
+  } finally {
+    if (cwd !== process.cwd()) {
+      process.chdir(cwd)
+    }
   }
 }

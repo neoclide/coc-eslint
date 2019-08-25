@@ -9,7 +9,7 @@ import * as path from 'path'
 import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import { URI } from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
-import { getAllFixEdits, getFilePath, getFileSystemPath, isUNC, resolveModule } from './util'
+import { getAllFixEdits, executeInWorkspaceDirectory, getFilePath, isUNC, resolveModule } from './util'
 declare var __webpack_require__: any
 declare var __non_webpack_require__: any
 const requireFunc = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require
@@ -775,34 +775,8 @@ function validate(document: TextDocument, settings: TextDocumentSettings, publis
   let newOptions: CLIOptions = Object.assign(Object.create(null), settings.options)
   let content = document.getText()
   let uri = document.uri
-  let file = getFilePath(document)
-  let cwd = process.cwd()
-
-  try {
-    if (file) {
-      if (settings.workingDirectory) {
-        newOptions.cwd = settings.workingDirectory.directory
-        if (settings.workingDirectory.changeProcessCWD) {
-          process.chdir(settings.workingDirectory.directory)
-        }
-      } else if (settings.workspaceFolder) {
-        let workspaceFolderUri = URI.parse(settings.workspaceFolder.uri)
-        if (workspaceFolderUri.scheme === 'file') {
-          const fsPath = getFileSystemPath(workspaceFolderUri)
-          newOptions.cwd = fsPath
-          process.chdir(fsPath)
-        }
-      } else if (!settings.workspaceFolder && !isUNC(file)) {
-        let directory = path.dirname(file)
-        if (directory) {
-          if (path.isAbsolute(directory)) {
-            newOptions.cwd = directory
-          }
-        }
-      }
-    }
-
-    let cli = new settings.library.CLIEngine(newOptions)
+  executeInWorkspaceDirectory(document, settings, newOptions, (file: string, options: CLIOptions) => {
+    let cli = new settings.library.CLIEngine(options)
     // Clean previously computed code actions.
     codeActions.delete(uri)
     let report: ESLintReport = cli.executeOnText(content, file)
@@ -846,12 +820,9 @@ function validate(document: TextDocument, settings: TextDocumentSettings, publis
         }
       })
     }
-  } finally {
-    if (cwd !== process.cwd()) {
-      process.chdir(cwd)
-    }
-  }
+  })
 }
+
 let noConfigReported: Map<string, ESLintModule> = new Map<
   string,
   ESLintModule
