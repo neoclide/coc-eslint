@@ -229,7 +229,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
               nodePath: config.get('nodePath', undefined),
               options: config.get<Object>('options', {}),
               run: config.get('run', 'onType'),
-              workspaceFolder: workspace.workspaceFolder,
+              workspaceFolder: getWorkspaceFolder(uri),
               workingDirectory: undefined,
               codeAction: {
                 disableRuleComment: config.get('codeAction.disableRuleComment', { enable: true, location: 'separateLine' as 'separateLine' }),
@@ -323,4 +323,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
   }, _e => {
     // noop
   })
+}
+
+function getWorkspaceFolder(uri: string): WorkspaceFolder | null {
+  let fsPath = Uri.parse(uri).fsPath
+  let folder = workspace.workspaceFolders.find(o => fsPath.startsWith(Uri.parse(o.uri).fsPath))
+  return folder
 }
