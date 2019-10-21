@@ -1,6 +1,7 @@
+import * as path from 'path'
 import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
-import { CLIOptions, TextDocumentSettings } from './types'
+import { CLIOptions, Is, TextDocumentSettings } from './types'
 import { URI } from 'vscode-uri'
 import resolveFrom from 'resolve-from'
 
@@ -10,31 +11,104 @@ interface Change {
   newText: string
 }
 
-export function getAllFixEdits(textDocument: TextDocument, settings: TextDocumentSettings): TextEdit[] {
-  let u = URI.parse(textDocument.uri)
-  if (u.scheme != 'file') return []
-  let content = textDocument.getText()
-  let newOptions: CLIOptions = Object.assign(
-    {},
-    settings.options,
-    {
-      fix: true
-    },
-  )
-  let filename = URI.parse(textDocument.uri).fsPath
-  let engine = new settings.library.CLIEngine(newOptions)
-  let res = engine.executeOnText(content, filename)
-  if (!res.results.length) return []
-  let { output } = res.results[0]
-  if (output == null) return []
-  let change = getChange(content, output)
-  return [{
-    range: {
-      start: textDocument.positionAt(change.start),
-      end: textDocument.positionAt(change.end)
-    },
-    newText: change.newText
-  }]
+const enum CharCode {
+  /**
+   * The `\` character.
+   */
+  Backslash = 92
+}
+
+/**
+ * Check if the path follows this pattern: `\\hostname\sharename`.
+ *
+ * @see https://msdn.microsoft.com/en-us/library/gg465305.aspx
+ * @return A boolean indication if the path is a UNC path, on none-windows
+ * always false.
+ */
+export function isUNC(path: string): boolean {
+  if (process.platform !== 'win32') {
+    // UNC is a windows concept
+    return false
+  }
+
+  if (!path || path.length < 5) {
+    // at least \\a\b
+    return false
+  }
+
+  let code = path.charCodeAt(0)
+  if (code !== CharCode.Backslash) {
+    return false
+  }
+  code = path.charCodeAt(1)
+  if (code !== CharCode.Backslash) {
+    return false
+  }
+  let pos = 2
+  let start = pos
+  for (; pos < path.length; pos++) {
+    code = path.charCodeAt(pos)
+    if (code === CharCode.Backslash) {
+      break
+    }
+  }
+  if (start === pos) {
+    return false
+  }
+  code = path.charCodeAt(pos + 1)
+  if (isNaN(code) || code === CharCode.Backslash) {
+    return false
+  }
+  return true
+}
+
+function getFileSystemPath(uri: URI): string {
+  let result = uri.fsPath
+  if (process.platform === 'win32' && result.length >= 2 && result[1] === ':') {
+    // Node by default uses an upper case drive letter and ESLint uses
+    // === to compare pathes which results in the equal check failing
+    // if the drive letter is lower case in th URI. Ensure upper case.
+    return result[0].toUpperCase() + result.substr(1)
+  } else {
+    return result
+  }
+}
+
+export function getFilePath(documentOrUri: string | TextDocument): string {
+  if (!documentOrUri) {
+    return undefined
+  }
+  let uri = Is.string(documentOrUri)
+    ? URI.parse(documentOrUri)
+    : URI.parse(documentOrUri.uri)
+  if (uri.scheme !== 'file') {
+    return undefined
+  }
+  return getFileSystemPath(uri)
+}
+
+export function getAllFixEdits(document: TextDocument, settings: TextDocumentSettings): TextEdit[] {
+  const uri = URI.parse(document.uri)
+  if (uri.scheme != 'file') return []
+  const content = document.getText()
+  const newOptions: CLIOptions = {...settings.options, fix: true}
+  return executeInWorkspaceDirectory(document, settings, newOptions, (filename: string, options: CLIOptions) => {
+    const engine = new settings.library.CLIEngine(options)
+    const res = engine.executeOnText(content, filename)
+    if (!res.results.length) return []
+
+    const { output } = res.results[0]
+    if (output == null) return []
+
+    const change = getChange(content, output)
+    return [{
+      range: {
+        start: document.positionAt(change.start),
+        end: document.positionAt(change.end)
+      },
+      newText: change.newText
+    }]
+  })
 }
 
 export function getChange(oldStr: string, newStr: string): Change {
@@ -76,5 +150,34 @@ export function resolveModule(name: string, localPath: string, globalPath: strin
     return Promise.resolve(path)
   } catch (e) {
     return Promise.reject(e)
+  }
+}
+
+export function executeInWorkspaceDirectory(document: TextDocument, settings: TextDocumentSettings, newOptions: CLIOptions, callback: Function): TextEdit[] {
+  const filename = getFilePath(document)
+  const cwd = process.cwd()
+  try {
+    if (filename) {
+      if (settings.workingDirectory) {
+        newOptions.cwd = settings.workingDirectory.directory
+        if (settings.workingDirectory.changeProcessCWD) {
+          process.chdir(settings.workingDirectory.directory)
+        }
+      } else if (settings.workspaceFolder) {
+        const workspaceFolderUri = URI.parse(settings.workspaceFolder.uri)
+        if (workspaceFolderUri.scheme === 'file') {
+          const fsPath = getFileSystemPath(workspaceFolderUri)
+          newOptions.cwd = fsPath
+          process.chdir(fsPath)
+        }
+      } else if (!settings.workspaceFolder && !isUNC(filename)) {
+        const directory = path.dirname(filename)
+        if (directory && path.isAbsolute(directory)) newOptions.cwd = directory
+      }
+    }
+
+    return callback(filename, newOptions)
+  } finally {
+    if (cwd !== process.cwd()) process.chdir(cwd)
   }
 }
