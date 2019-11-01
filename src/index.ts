@@ -5,7 +5,7 @@ import path from 'path'
 import { CodeAction, CodeActionContext, Command, Diagnostic, DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, DocumentSelector, ExecuteCommandParams, ExecuteCommandRequest, NotificationType, RequestType, TextDocument, TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkspaceFolder } from 'vscode-languageserver-protocol'
 import { findEslint } from './utils'
 
-const defaultLanguages = ['javascript', 'javascriptreact']
+const defaultLanguages = ['javascript', 'javascriptreact', 'typescript', 'typescriptreact']
 namespace Is {
   const toString = Object.prototype.toString
 
@@ -140,7 +140,7 @@ function shouldBeValidated(textDocument: TextDocument): boolean {
 export async function activate(context: ExtensionContext): Promise<void> {
   let { subscriptions } = context
   const config = workspace.getConfiguration().get<any>('eslint', {}) as any
-  const filetypes = config.filetypes || ['javascript', 'javascriptreact']
+  const filetypes = config.filetypes || defaultLanguages
   const selector: DocumentSelector = filetypes.reduce((res, filetype) => {
     return res.concat([{ language: filetype, scheme: 'file' }, { language: filetype, scheme: 'untitled' }])
   }, [])
