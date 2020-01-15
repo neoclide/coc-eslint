@@ -6,10 +6,11 @@
 
 import * as os from 'os'
 import * as path from 'path'
-import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocument, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
+import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import { URI } from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
 import { getAllFixEdits, executeInWorkspaceDirectory, getFilePath, isUNC, resolveModule } from './util'
+import { TextDocument } from 'vscode-languageserver-textdocument'
 declare var __webpack_require__: any
 declare var __non_webpack_require__: any
 const requireFunc = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require
@@ -248,7 +249,7 @@ process.on('uncaughtException', (error: any) => {
 
 let connection = createConnection()
 connection.console.info(`ESLint server running in node ${process.version}`)
-let documents: TextDocuments = new TextDocuments()
+let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 
 let _globalNpmPath: string | null | undefined
 function globalNpmPath(): string {

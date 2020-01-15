@@ -2,8 +2,9 @@ import { Uri, commands, ExtensionContext, LanguageClient, LanguageClientOptions,
 import { ProviderResult } from 'coc.nvim/lib/provider'
 import fs from 'fs'
 import path from 'path'
-import { CodeAction, CodeActionContext, Command, Diagnostic, DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, DocumentSelector, ExecuteCommandParams, ExecuteCommandRequest, NotificationType, RequestType, TextDocument, TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkspaceFolder } from 'vscode-languageserver-protocol'
+import { CodeAction, CodeActionContext, Command, Diagnostic, DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, DocumentSelector, ExecuteCommandParams, ExecuteCommandRequest, NotificationType, RequestType, TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkspaceFolder } from 'vscode-languageserver-protocol'
 import { findEslint } from './utils'
+import { TextDocument } from 'vscode-languageserver-textdocument'
 
 const defaultLanguages = ['javascript', 'javascriptreact', 'typescript', 'typescriptreact']
 namespace Is {
