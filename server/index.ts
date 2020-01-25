@@ -324,7 +324,9 @@ function resolveSettings(
       } else {
         directory = settings.workspaceFolder ? URI.parse(settings.workspaceFolder.uri).fsPath : undefined
       }
-      promise = resolveModule('eslint', directory, nodePath)
+      promise = resolveModule('./eslint', directory, nodePath).catch(() => {
+        return resolveModule('eslint', directory, nodePath)
+      })
       return promise.then(path => {
         let library = path2Library.get(path)
         if (!library) {
