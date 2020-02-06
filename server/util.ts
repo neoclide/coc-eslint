@@ -93,6 +93,9 @@ export function getAllFixEdits(document: TextDocument, settings: TextDocumentSet
   const content = document.getText()
   const newOptions: CLIOptions = {...settings.options, fix: true}
   return executeInWorkspaceDirectory(document, settings, newOptions, (filename: string, options: CLIOptions) => {
+    if (!settings.validate) {
+      return []
+    }
     const engine = new settings.library.CLIEngine(options)
     const res = engine.executeOnText(content, filename)
     if (!res.results.length) return []
