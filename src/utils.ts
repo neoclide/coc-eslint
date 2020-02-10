@@ -18,6 +18,10 @@ export async function findEslint(rootPath: string): Promise<string> {
     (exists(path.join(rootPath, 'node_modules', '.bin', 'eslint')))
   ) {
     return path.join('.', 'node_modules', '.bin', 'eslint')
+  } else if (
+    exists(path.join(rootPath, '.vscode', 'pnpify', 'eslint', 'bin', 'eslint.js'))
+  ) {
+    return path.join('.', '.vscode', 'pnpify', 'eslint', 'bin', 'eslint.js')
   } else {
     try {
       return which.sync('eslint')
