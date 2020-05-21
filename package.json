@@ -1,6 +1,6 @@
 {
   "name": "coc-eslint",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "eslint extension for coc",
   "main": "lib/index.js",
   "publisher": "chemzqm",
