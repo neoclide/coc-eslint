@@ -1223,7 +1223,7 @@ messageQueue.registerRequest(
           result.fixAll = CodeAction.create(
             title,
             command,
-            CodeActionKind.QuickFix
+            CodeActionKind.SourceFixAll
           )
         }
       }
@@ -1261,7 +1261,7 @@ messageQueue.registerRequest(
         let ruleId = params.arguments[0]
         let url = ruleDocData.urls.get(ruleId)
         if (url) {
-          connection.sendRequest(OpenESLintDocRequest.type, { url })
+          await connection.sendRequest(OpenESLintDocRequest.type, { url })
         }
       } else {
         workspaceChange = commands.get(params.command)
