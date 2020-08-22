@@ -113,6 +113,14 @@
           "type": "boolean",
           "default": false
         },
+        "eslint.autoFixSkipRules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Rules that should be skipped when autofixing."
+        },
         "eslint.codeAction.disableRuleComment": {
           "scope": "resource",
           "type": "object",
