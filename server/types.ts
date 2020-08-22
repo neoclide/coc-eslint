@@ -125,6 +125,7 @@ export interface TextDocumentSettings {
   quiet: boolean
   autoFix: boolean
   autoFixOnSave: boolean
+  autoFixSkipRules: string[]
   options: any | undefined
   run: RunValues
   nodePath: string | undefined

@@ -65,6 +65,7 @@ interface TextDocumentSettings {
   packageManager: 'npm' | 'yarn'
   autoFix: boolean
   autoFixOnSave: boolean
+  autoFixSkipRules: string[]
   quiet: boolean
   options: any | undefined
   nodePath: string | undefined
@@ -227,6 +228,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
               validate: config.get('validate', true),
               autoFix: config.get('autoFix', false),
               autoFixOnSave: config.get('autoFixOnSave', false),
+              autoFixSkipRules: config.get('autoFixSkipRules', []),
               nodePath: config.get('nodePath', undefined),
               options: config.get<Object>('options', {}),
               run: config.get('run', 'onType'),

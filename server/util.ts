@@ -1,7 +1,7 @@
 import * as path from 'path'
 import fastDiff from 'fast-diff'
 import { TextDocument, TextEdit } from 'vscode-languageserver'
-import { CLIOptions, Is, TextDocumentSettings } from './types'
+import { CLIOptions, ESLintProblem, Is, TextDocumentSettings } from './types'
 import { URI } from 'vscode-uri'
 import resolveFrom from 'resolve-from'
 
@@ -91,7 +91,10 @@ export function getAllFixEdits(document: TextDocument, settings: TextDocumentSet
   const uri = URI.parse(document.uri)
   if (uri.scheme != 'file') return []
   const content = document.getText()
-  const newOptions: CLIOptions = {...settings.options, fix: true}
+  const fixRule = (problem: ESLintProblem): boolean => {
+    return settings.autoFixSkipRules.indexOf(problem.ruleId) === -1;
+  }
+  const newOptions: CLIOptions = {...settings.options, fix: fixRule}
   return executeInWorkspaceDirectory(document, settings, newOptions, (filename: string, options: CLIOptions) => {
     if (!settings.validate) {
       return []
