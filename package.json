@@ -90,6 +90,14 @@
             "onSave"
           ]
         },
+        "eslint.runtime": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The location of the node binary to run ESLint under."
+        },
         "eslint.nodePath": {
           "type": [
             "string",
@@ -167,7 +175,7 @@
   "devDependencies": {
     "@chemzqm/tsconfig": "^0.0.3",
     "@chemzqm/tslint-config": "^1.0.18",
-    "@types/eslint": "^6.1.3",
+    "@types/eslint": "^7.2.0",
     "@types/fast-diff": "^1.2.0",
     "@types/node": "^13.1.7",
     "coc.nvim": "0.0.65",
