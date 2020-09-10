@@ -1043,7 +1043,11 @@ class Fixes {
 
   public getAllSorted(): FixableProblem[] {
     let result: FixableProblem[] = []
-    this.edits.forEach(value => result.push(value))
+    this.edits.forEach(value => {
+      if (value.edit != null) {
+        result.push(value)
+      }
+    })
     return result.sort((a, b) => {
       let d = a.edit.range[0] - b.edit.range[0]
       if (d !== 0) {
@@ -1124,15 +1128,17 @@ messageQueue.registerRequest(
         let ruleId = editInfo.ruleId
         allFixableRuleIds.push(ruleId)
 
-        if (!!editInfo.edit) {
+        if (editInfo.edit != null) {
           let workspaceChange = new WorkspaceChange()
           workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createTextEdit(editInfo))
           commands.set(`${CommandIds.applySingleFix}:${ruleId}`, workspaceChange)
-          result.get(ruleId).fixes.push(CodeAction.create(
+          let action = CodeAction.create(
             editInfo.label,
             Command.create(editInfo.label, CommandIds.applySingleFix, ruleId),
             CodeActionKind.QuickFix
-          ))
+          )
+          action.isPreferred = true
+          result.get(ruleId).fixes.push(action)
         }
 
         if (settings.codeAction.disableRuleComment.enable) {
