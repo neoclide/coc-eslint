@@ -258,8 +258,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
   )
 
   function onDidChangeConfiguration(e: ConfigurationChangeEvent): void {
-    if (!e.affectsConfiguration('eslint')) return
-    if (client.serviceState != ServiceStat.Running) return
+    if (!e.affectsConfiguration('eslint') || client.serviceState != ServiceStat.Running) return
     for (let textDocument of syncedDocuments.values()) {
       if (!shouldBeValidated(textDocument)) {
         syncedDocuments.delete(textDocument.uri)
@@ -290,6 +289,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
 
   subscriptions.push(commands.registerCommand('eslint.executeAutofix', async () => {
     let document = await workspace.document
+    if (!shouldBeValidated(document.textDocument)) {
+      workspace.showMessage(`Current filetype ${document.textDocument.languageId} is not handled by coc-eslint.`, 'warning')
+      return
+    }
+    await client.onReady()
     let textDocument: VersionedTextDocumentIdentifier = {
       uri: document.uri,
       version: document.version
