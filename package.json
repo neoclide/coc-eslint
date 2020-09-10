@@ -46,6 +46,14 @@
           "default": false,
           "description": "Turns on quiet mode, which ignores warnings."
         },
+        "eslint.nodeEnv": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The value of NODE_ENV to use when running eslint tasks."
+        },
         "eslint.trace.server": {
           "type": "string",
           "default": "off",

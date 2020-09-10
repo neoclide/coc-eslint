@@ -36,6 +36,7 @@ In your vim/neovim run the following command:
   }
   ```
 - `eslint.run` - run the linter `onSave` or `onType`. The Default is `onType`.
+- `eslint.nodeEnv` - use this setting if an ESLint plugin or configuration needs `process.env.NODE_ENV` to be defined.
 - `eslint.autoFixOnSave` - enables auto fix on save.
 - `eslint.autoFixSkipRules` - rules that shouldn't be autofixed.
 - `eslint.nodePath` - use this setting if an installed ESLint package can't be detected. For example `/myGlobalNodePackages/node_modules`.

@@ -146,6 +146,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
   const selector: DocumentSelector = filetypes.reduce((res, filetype) => {
     return res.concat([{ language: filetype, scheme: 'file' }, { language: filetype, scheme: 'untitled' }])
   }, [])
+  const nodeEnv = config.nodeEnv
+  let env: { [key: string]: string | number | boolean } | undefined
+  if (nodeEnv) env = { nodeEnv }
 
   let serverOptions: ServerOptions = {
     runtime: config.runtime,
@@ -154,7 +157,8 @@ export async function activate(context: ExtensionContext): Promise<void> {
     transport: TransportKind.ipc,
     options: {
       cwd: workspace.root,
-      execArgv: config.execArgv
+      execArgv: config.execArgv,
+      env
     }
   }
 
