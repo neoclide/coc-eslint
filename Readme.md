@@ -26,12 +26,13 @@ In your vim/neovim run the following command:
 
 - `eslint.enable`: enable/disable ESLint. This is enabled by default.
 - `eslint.quiet` - ignore warnings.
+- `eslint.runtime` - use this setting to set the path of the node runtime to run ESLint under.
 - `eslint.packageManager`: controls the package manager to be used to resolve the ESLint library. This has only an influence if the ESLint library is resolved globally. Valid values are `"npm"` or `"yarn"`.
 - `eslint.options`: options to configure how ESLint is started using the [ESLint CLI Engine API](http://eslint.org/docs/developer-guide/nodejs-api#cliengine). Defaults to an empty option bag.
   An example to point to a custom `.eslintrc.json` file is:
   ```json
   {
-    "eslint.options": {"configFile": "C:/mydirectory/.eslintrc.json"}
+    "eslint.options": { "configFile": "C:/mydirectory/.eslintrc.json" }
   }
   ```
 - `eslint.run` - run the linter `onSave` or `onType`. The Default is `onType`.
@@ -44,7 +45,7 @@ In your vim/neovim run the following command:
   - `location` - choose to either add the `eslint-disable` comment on the `separateLine` or `sameLine`. `separateLine` is the default.
     Example:
   ```json
-  {"enable": true, "location": "sameLine"}
+  { "enable": true, "location": "sameLine" }
   ```
 - `eslint.codeAction.showDocumentation` - object with properties:
   - `enable` - show open lint rule documentation web page in the quick fix menu. `true` by default.
@@ -62,4 +63,3 @@ For warnings which support an auto-fix. You can apply the quick fix by either:
 ## License
 
 MIT
-

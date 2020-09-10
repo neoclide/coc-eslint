@@ -148,6 +148,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
   }, [])
 
   let serverOptions: ServerOptions = {
+    runtime: config.runtime,
     module: context.asAbsolutePath('./lib/server.js'),
     args: ['--node-ipc'],
     transport: TransportKind.ipc,
