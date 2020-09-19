@@ -316,13 +316,17 @@ export async function activate(context: ExtensionContext): Promise<void> {
       )
     })
     client.onRequest(NoConfigRequest.type, params => {
-      let document = Uri.parse(params.document.uri)
-      let fileLocation = document.fsPath
+      let uri = Uri.parse(params.document.uri)
+      let config = workspace.getConfiguration('eslint', uri.toString())
+      if (config.get<boolean>('quiet', false)) return
+      let fileLocation = uri.fsPath
       workspace.showMessage(`No ESLint configuration (e.g .eslintrc) found for file: ${fileLocation}`, 'warning')
       return {}
     })
     client.onRequest(NoESLintLibraryRequest.type, params => {
       let uri: Uri = Uri.parse(params.source.uri)
+      let config = workspace.getConfiguration('eslint', uri.toString())
+      if (config.get<boolean>('quiet', false)) return
       workspace.showMessage(`Failed to load the ESLint library for the document ${uri.fsPath}`, 'warning')
       return {}
     })
