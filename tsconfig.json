@@ -3,7 +3,7 @@
   "compilerOptions": {
     "declaration": false,
     "outDir": "lib",
-    "target": "es2015",
+    "target": "es2017",
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitThis": true,
