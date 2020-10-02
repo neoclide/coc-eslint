@@ -188,7 +188,6 @@
     "coc.nvim": "0.0.79",
     "eslint": "^7.9.0",
     "fast-diff": "^1.2.0",
-    "resolve-from": "^5.0.0",
     "rimraf": "^3.0.0",
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.4",
