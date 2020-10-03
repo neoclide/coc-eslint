@@ -9,7 +9,7 @@ import * as path from 'path'
 import { Position, CancellationToken, CodeAction, CodeActionKind, CodeActionRequest, Command, createConnection, Diagnostic, DiagnosticSeverity, DidChangeConfigurationNotification, DidChangeWatchedFilesNotification, ErrorCodes, ExecuteCommandRequest, Files, IConnection, NotificationHandler, NotificationType, Range, RequestHandler, RequestType, ResponseError, TextDocumentIdentifier, TextDocuments, TextDocumentSaveReason, TextDocumentSyncKind, TextEdit, VersionedTextDocumentIdentifier, WorkspaceChange } from 'vscode-languageserver'
 import { URI } from 'vscode-uri'
 import { CLIOptions, ESLintAutoFixEdit, ESLintError, ESLintModule, ESLintProblem, ESLintReport, Is, TextDocumentSettings } from './types'
-import { getAllFixEdits, executeInWorkspaceDirectory, getFilePath, isUNC, resolveModule } from './util'
+import { getAllFixEdits, executeInWorkspaceDirectory, getFilePath, isUNC } from './util'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 declare var __webpack_require__: any
 declare var __non_webpack_require__: any
@@ -302,7 +302,7 @@ function resolveSettings(
   resultPromise = connection.workspace
     .getConfiguration({ scopeUri: uri, section: '' })
     .then((settings: TextDocumentSettings) => {
-      let nodePath: string
+      let nodePath: string | undefined
       if (settings.nodePath) {
         nodePath = settings.nodePath
         if (nodePath.startsWith('~')) {
@@ -311,11 +311,15 @@ function resolveSettings(
         if (!path.isAbsolute(nodePath)) {
           nodePath = path.join(URI.parse(settings.workspaceFolder.uri).fsPath, nodePath)
         }
-      } else if (settings.packageManager === 'npm') {
-        nodePath = globalNpmPath()
-      } else if (settings.packageManager === 'yarn') {
-        nodePath = globalYarnPath()
       }
+
+      let resolvedGlobalPackageManagerPath: string | undefined
+      if (settings.packageManager === 'npm') {
+        resolvedGlobalPackageManagerPath = globalNpmPath()
+      } else if (settings.packageManager === 'yarn') {
+        resolvedGlobalPackageManagerPath = globalYarnPath()
+      }
+
       let uri = URI.parse(document.uri)
       let promise: Thenable<string>
       let directory: string
@@ -324,7 +328,15 @@ function resolveSettings(
       } else {
         directory = settings.workspaceFolder ? URI.parse(settings.workspaceFolder.uri).fsPath : undefined
       }
-      promise = resolveModule('eslint', directory, nodePath)
+
+      if (nodePath !== undefined) {
+        promise = Files.resolve('eslint', nodePath, nodePath, trace).then<string, string>(undefined, () => {
+          return Files.resolve('eslint', resolvedGlobalPackageManagerPath, directory, trace);
+        });
+      } else {
+        promise = Files.resolve('eslint', resolvedGlobalPackageManagerPath, directory, trace);
+      }
+
       return promise.then(path => {
         let library = path2Library.get(path)
         if (!library) {
