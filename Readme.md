@@ -22,7 +22,7 @@ In your vim/neovim run the following command:
 
 ## Configuration options
 
-**Notice** these configuration settings allow you to configure the behaviour of the coc-eslint extension.
+**Notice** these configuration settings allow you to configure the behaviour of the coc-eslint extension. They should be set in your `coc-settings.json` file, which can be opened with the `:CocConfig` command.
 
 - `eslint.enable`: enable/disable ESLint. This is enabled by default.
 - `eslint.quiet` - ignore warnings.
