@@ -719,7 +719,7 @@ messageQueue.registerNotification(
 const singleErrorHandlers: ((
   error: any,
   document: TextDocument,
-  library: ESLintModule
+  settings: TextDocumentSettings
 ) => Status)[] = [
     tryHandleNoConfig,
     tryHandleConfigError,
@@ -746,7 +746,7 @@ function validateSingle(
     } catch (err) {
       let status
       for (let handler of singleErrorHandlers) {
-        status = handler(err, document, settings.library)
+        status = handler(err, document, settings)
         if (status) {
           break
         }
@@ -851,7 +851,7 @@ function isNoConfigFoundError(error: any): boolean {
 function tryHandleNoConfig(
   error: any,
   document: TextDocument,
-  library: ESLintModule
+  settings: TextDocumentSettings
 ): Status {
   if (!isNoConfigFoundError(error)) {
     return undefined
@@ -867,7 +867,7 @@ function tryHandleNoConfig(
       .then(undefined, () => {
         // noop
       })
-    noConfigReported.set(document.uri, library)
+    noConfigReported.set(document.uri, settings.library)
   }
   return Status.warn
 }
@@ -880,7 +880,7 @@ let configErrorReported: Map<string, ESLintModule> = new Map<
 function tryHandleConfigError(
   error: any,
   document: TextDocument,
-  library: ESLintModule
+  settings: TextDocumentSettings
 ): Status {
   if (!error.message) {
     return undefined
@@ -892,7 +892,7 @@ function tryHandleConfigError(
       if (!documents.get(URI.file(filename).toString())) {
         connection.window.showInformationMessage(getMessage(error, document))
       }
-      configErrorReported.set(filename, library)
+      configErrorReported.set(filename, settings.library)
     }
     return Status.warn
   }
@@ -927,7 +927,7 @@ let missingModuleReported: Map<string, ESLintModule> = new Map<
 function tryHandleMissingModule(
   error: any,
   document: TextDocument,
-  library: ESLintModule
+  settings: TextDocumentSettings
 ): Status {
   if (!error.message) {
     return undefined
@@ -940,7 +940,7 @@ function tryHandleMissingModule(
   ): Status {
     if (!missingModuleReported.has(plugin)) {
       let fsPath = getFilePath(document)
-      missingModuleReported.set(plugin, library)
+      missingModuleReported.set(plugin, settings.library)
       if (error.messageTemplate === 'plugin-missing') {
         connection.console.error(
           [
@@ -979,13 +979,15 @@ function tryHandleMissingModule(
   return undefined
 }
 
-function showErrorMessage(error: any, document: TextDocument): Status {
-  connection.window.showErrorMessage(
-    `ESLint: ${getMessage(
-      error,
-      document
-    )}. Please see the 'ESLint' output channel for details.`
-  )
+function showErrorMessage(error: any, document: TextDocument, settings: TextDocumentSettings): Status {
+  if (!settings.quiet) {
+    connection.window.showErrorMessage(
+      `ESLint: ${getMessage(
+        error,
+        document
+      )}. Please see the 'ESLint' output channel for details.`
+    )
+  }
   if (Is.string(error.stack)) {
     connection.console.error('ESLint stack trace:')
     connection.console.error(error.stack)
