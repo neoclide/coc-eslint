@@ -798,11 +798,6 @@ function validate(document: TextDocument, settings: TextDocumentSettings, publis
       if (docReport.messages && Array.isArray(docReport.messages)) {
         docReport.messages.forEach(problem => {
           if (problem) {
-            const isWarning = convertSeverity(problem.severity) === DiagnosticSeverity.Warning
-            if (settings.quiet && isWarning) {
-              // Filter out warnings when quiet mode is enabled
-              return
-            }
             const diagnostic = makeDiagnostic(problem)
             diagnostics.push(diagnostic)
             if (settings.autoFix) {
