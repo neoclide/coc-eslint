@@ -130,6 +130,7 @@ async function createDefaultConfiguration(): Promise<void> {
     cmd: eslintCommand + ' --init',
     cwd: root
   }])
+  await workspace.nvim.command('startinsert')
 }
 
 function shouldBeValidated(textDocument: TextDocument): boolean {
