@@ -49,6 +49,11 @@
         "title": "Manage Library Execution",
         "category": "ESLint",
         "command": "eslint.manageLibraryExecution"
+      },
+      {
+        "title": "Run eslint for current project",
+        "category": "ESLint",
+        "command": "eslint.lintProject"
       }
     ],
     "configuration": {
@@ -348,6 +353,17 @@
           "type": "boolean",
           "default": false,
           "description": "Enables ESLint as a formatter."
+        },
+        "eslint.lintTask.options": {
+          "scope": "resource",
+          "type": "array",
+          "default": [
+            "."
+          ],
+          "description": "Command line options applied when running the task for linting the whole workspace (see https://eslint.org/docs/user-guide/command-line-interface).",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

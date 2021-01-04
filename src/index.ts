@@ -23,6 +23,7 @@ import {
 } from 'vscode-languageserver-protocol'
 
 import { findEslint, convert2RegExp, toOSPath, toPosixPath, Semaphore } from './utils'
+import EslintTask from './task'
 
 enum ConfigurationTarget {
   Global,
@@ -669,6 +670,7 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(
     Commands.registerCommand('eslint.createConfig', createDefaultConfiguration)
   )
+  context.subscriptions.push(new EslintTask())
   configurationChanged()
 }
 
@@ -752,6 +754,7 @@ interface LanguageSettings {
 function realActivate(context: ExtensionContext): void {
 
   const statusBarItem = Window.createStatusBarItem(0)
+  context.subscriptions.push(statusBarItem)
   let serverRunning: boolean | undefined
 
   const starting = 'ESLint server is starting.'

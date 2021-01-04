@@ -24,6 +24,7 @@ In your vim/neovim run the following command:
   - `eslint.showOutputChannel` Show Output Channel.
   - `eslint.resetLibraryExecution` Reset Library Execution Decisions.
   - `eslint.manageLibraryExecution` Manage Library Execution.
+  - `eslint.lintProject` Run eslint for current project, add errors to quickfix list.
 
 ## Configuration options
 
@@ -53,6 +54,7 @@ In your vim/neovim run the following command:
 - `eslint.codeActionsOnSave.mode`: Specifies the code action mode. Possible values are 'all' and 'problems'. default: `"all"`
   Valid options: ["all","problems"]
 - `eslint.format.enable`: Enables ESLint as a formatter. default: `false`
+- `eslint.lintTask.options`: Command line options applied when running the task for linting the whole workspace (see https://eslint.org/docs/user-guide/command-line-interface). default: `["."]`
 
 ## Auto-fixing
 
