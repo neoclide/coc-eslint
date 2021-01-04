@@ -1,15 +1,19 @@
 {
   "name": "coc-eslint",
   "version": "1.3.2",
-  "description": "eslint extension for coc",
+  "description": "Eslint extension for coc.nvim",
   "main": "lib/index.js",
   "publisher": "chemzqm",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neoclide/coc-eslint.git"
+  },
   "keywords": [
     "coc.nvim",
     "eslint"
   ],
   "engines": {
-    "coc": "^0.0.64"
+    "coc": "^0.0.80"
   },
   "scripts": {
     "clean": "rimraf lib",
@@ -22,14 +26,29 @@
   "contributes": {
     "commands": [
       {
-        "title": "Fix all auto-fixable problems",
+        "title": "Fix all auto-fixable Problems",
         "category": "ESLint",
         "command": "eslint.executeAutofix"
       },
       {
-        "title": "Create a '.eslintrc' config file",
+        "title": "Create ESLint configuration",
         "category": "ESLint",
         "command": "eslint.createConfig"
+      },
+      {
+        "title": "Show Output Channel",
+        "category": "ESLint",
+        "command": "eslint.showOutputChannel"
+      },
+      {
+        "title": "Reset Library Execution Decisions",
+        "category": "ESLint",
+        "command": "eslint.resetLibraryExecution"
+      },
+      {
+        "title": "Manage Library Execution",
+        "category": "ESLint",
+        "command": "eslint.manageLibraryExecution"
       }
     ],
     "configuration": {
@@ -37,16 +56,31 @@
       "title": "Eslint",
       "properties": {
         "eslint.enable": {
+          "scope": "resource",
           "type": "boolean",
           "default": true,
-          "description": "enable lint for files."
+          "description": "Controls whether eslint is enabled or not.",
+          "deprecationMessage": "This setting is deprecated. Disable ESLint using the extensions list."
         },
-        "eslint.quiet": {
+        "eslint.packageManager": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "npm",
+            "yarn",
+            "pnpm"
+          ],
+          "default": "npm",
+          "description": "The package manager you use to install node modules."
+        },
+        "eslint.alwaysShowStatus": {
           "type": "boolean",
           "default": false,
-          "description": "Turns on quiet mode, which ignores warnings."
+          "description": "Always show the ESlint status bar item.",
+          "scope": "window"
         },
         "eslint.nodeEnv": {
+          "scope": "resource",
           "type": [
             "string",
             "null"
@@ -54,59 +88,8 @@
           "default": null,
           "description": "The value of NODE_ENV to use when running eslint tasks."
         },
-        "eslint.trace.server": {
-          "type": "string",
-          "default": "off",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ]
-        },
-        "eslint.execArgv": {
-          "type": "array",
-          "default": [],
-          "items": {
-            "type": "string"
-          }
-        },
-        "eslint.filetypes": {
-          "type": "array",
-          "default": [
-            "javascript",
-            "javascriptreact",
-            "typescript",
-            "typescriptreact"
-          ],
-          "items": {
-            "type": "string"
-          }
-        },
-        "eslint.packageManager": {
-          "type": "string",
-          "default": "npm",
-          "enum": [
-            "npm",
-            "yarn"
-          ]
-        },
-        "eslint.run": {
-          "type": "string",
-          "default": "onType",
-          "enum": [
-            "onType",
-            "onSave"
-          ]
-        },
-        "eslint.runtime": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "The location of the node binary to run ESLint under."
-        },
         "eslint.nodePath": {
+          "scope": "machine-overridable",
           "type": [
             "string",
             "null"
@@ -114,28 +97,199 @@
           "default": null,
           "description": "A path added to NODE_PATH when resolving the eslint module."
         },
-        "eslint.autoFix": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable auto fix feature"
-        },
         "eslint.options": {
           "scope": "resource",
           "type": "object",
           "default": {},
           "description": "The eslint options object to provide args normally passed to eslint when executed from a command line (see http://eslint.org/docs/developer-guide/nodejs-api#cliengine)."
         },
-        "eslint.autoFixOnSave": {
-          "type": "boolean",
-          "default": false
+        "eslint.trace.server": {
+          "scope": "window",
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "off",
+                "messages",
+                "verbose"
+              ],
+              "default": "off"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "verbosity": {
+                  "type": "string",
+                  "enum": [
+                    "off",
+                    "messages",
+                    "verbose"
+                  ],
+                  "default": "off"
+                },
+                "format": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "json"
+                  ],
+                  "default": "text"
+                }
+              }
+            }
+          ],
+          "default": "off",
+          "description": "Traces the communication between VSCode and the eslint linter service."
         },
-        "eslint.autoFixSkipRules": {
+        "eslint.run": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "onSave",
+            "onType"
+          ],
+          "default": "onType",
+          "description": "Run the linter on save (onSave) or on type (onType)"
+        },
+        "eslint.autoFixOnSave": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Turns auto fix on save on or off."
+        },
+        "eslint.quiet": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Turns on quiet mode, which ignores warnings."
+        },
+        "eslint.onIgnoredFiles": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "warn",
+            "off"
+          ],
+          "default": "off",
+          "description": "Whether ESLint should issue a warning on ignored files."
+        },
+        "eslint.workingDirectories": {
+          "scope": "resource",
+          "type": "array",
+          "description": "Working directories for files in different folders.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "location"
+                    ]
+                  },
+                  "default": "location"
+                },
+                "required": [
+                  "mode"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string",
+                    "description": "The working directory to use if a file's path starts with this directory."
+                  },
+                  "!cwd": {
+                    "type": "boolean",
+                    "description": "Set to true if ESLint shouldn't change the working directory."
+                  }
+                },
+                "required": [
+                  "directory"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "pattern": {
+                    "type": "string",
+                    "description": "A glob pattern to match a working directory."
+                  },
+                  "!cwd": {
+                    "type": "boolean",
+                    "description": "Set to true if ESLint shouldn't change the working directory."
+                  }
+                },
+                "required": [
+                  "pattern"
+                ]
+              }
+            ]
+          }
+        },
+        "eslint.validate": {
+          "scope": "resource",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "language": {
+                    "type": "string",
+                    "description": "The language id to be validated by ESLint."
+                  },
+                  "autoFix": {
+                    "type": "boolean",
+                    "description": "Whether auto fixes are provided for the language."
+                  }
+                },
+                "deprecationMessage": "Auto Fix is enabled by default. Use the single string form."
+              }
+            ]
+          },
+          "description": "An array of language ids which should be validated by ESLint. If not installed ESLint will show an error."
+        },
+        "eslint.probe": {
+          "scope": "resource",
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [],
-          "description": "Rules that should be skipped when autofixing."
+          "default": [
+            "javascript",
+            "javascriptreact",
+            "typescript",
+            "typescriptreact",
+            "html",
+            "vue",
+            "markdown"
+          ],
+          "description": "An array of language ids for which the extension should probe if support is installed."
+        },
+        "eslint.runtime": {
+          "scope": "machine-overridable",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The location of the node binary to run ESLint under."
+        },
+        "eslint.debug": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Enables ESLint debug mode (same as --debug on the command line)"
         },
         "eslint.codeAction.disableRuleComment": {
           "scope": "resource",
@@ -174,6 +328,26 @@
               "description": "Show the documentation code actions."
             }
           }
+        },
+        "eslint.codeActionsOnSave.mode": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "all",
+            "problems"
+          ],
+          "enumDescriptions": [
+            "Fixes all possible problems in the file. This option might take some time.",
+            "Only fixes reported problems that have non overlapping textual edits. This options runs a lot faster."
+          ],
+          "default": "all",
+          "description": "Specifies the code action mode. Possible values are 'all' and 'problems'."
+        },
+        "eslint.format.enable": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Enables ESLint as a formatter."
         }
       }
     }
@@ -181,23 +355,18 @@
   "author": "chemzqm@gmail.com",
   "license": "MIT",
   "devDependencies": {
-    "@chemzqm/tsconfig": "^0.0.3",
-    "@types/eslint": "^7.2.2",
-    "@types/fast-diff": "^1.2.0",
     "@types/node": "^10.12.0",
-    "coc.nvim": "0.0.79",
-    "eslint": "^7.9.0",
-    "fast-diff": "^1.2.0",
+    "coc.nvim": "^0.0.80",
+    "eslint": "^7.15.0",
     "rimraf": "^3.0.0",
     "ts-loader": "^6.2.1",
-    "typescript": "^3.7.4",
-    "vscode-languageserver": "^6.1.1",
+    "typescript": "^4.1.2",
+    "vscode-languageserver": "7.0.0",
     "vscode-languageserver-protocol": "3.15.3",
-    "vscode-languageserver-textdocument": "^1.0.0",
+    "vscode-languageserver-textdocument": "^1.0.1",
     "vscode-uri": "^2.1.1",
-    "webpack": "^4.41.5",
-    "webpack-cli": "^3.3.10",
-    "which": "^2.0.2"
+    "webpack": "^5.11.1",
+    "webpack-cli": "^4.3.1"
   },
   "dependencies": {}
 }

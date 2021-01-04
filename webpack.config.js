@@ -3,7 +3,7 @@ const path = require('path')
 module.exports = {
   entry: {
     index: './src/index.ts',
-    server: './server/index.ts'
+    server: './server/eslintServer.ts'
   },
   target: 'node',
   mode: 'none',
