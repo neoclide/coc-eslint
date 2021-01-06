@@ -1212,7 +1212,6 @@ function realActivate(context: ExtensionContext): void {
             await Workspace.applyEdit(res[0].edit)
           }
         }
-        console.log(res)
       }
     }
   })
