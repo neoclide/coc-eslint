@@ -1,5 +1,5 @@
 import { commands, disposeAll, StatusBarItem, Task, TaskOptions, Uri, window, workspace } from 'coc.nvim'
-import { Disposable, Location } from 'vscode-languageserver-protocol'
+import { Disposable, Location } from 'coc.nvim'
 import { findEslint } from './utils'
 
 const errorRegex = /^(.+):(\d+):(\d+):\s*(.+?)\s\[(\w+)\/(.*)\]/

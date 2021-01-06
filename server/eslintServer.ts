@@ -356,12 +356,9 @@ interface ESLintModule {
   CLIEngine: CLIEngineConstructor
 }
 
-declare const __webpack_require__: typeof require
-declare const __non_webpack_require__: typeof require
 function loadNodeModule<T>(moduleName: string): T | undefined {
-  const r = typeof __webpack_require__ === 'function' ? __non_webpack_require__ : require
   try {
-    return r(moduleName)
+    return require(moduleName)
   } catch (err) {
     connection.console.error(err.stack.toString())
   }
