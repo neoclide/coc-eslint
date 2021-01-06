@@ -8,18 +8,21 @@ import path from 'path'
 import fs from 'fs'
 import {
   workspace as Workspace, events, Document, window as Window, commands as Commands, languages as Languages, Disposable, ExtensionContext, Uri, TextDocument, CodeActionContext, Diagnostic, ProviderResult, Command, QuickPickItem,
-  WorkspaceFolder as VWorkspaceFolder, CodeAction, MessageItem, DiagnosticSeverity as VDiagnosticSeverity,
+  WorkspaceFolder as VWorkspaceFolder, MessageItem, DiagnosticSeverity as VDiagnosticSeverity,
   DiagnosticCollection, Range, Position,
   LanguageClient, LanguageClientOptions, RequestType, TransportKind, TextDocumentIdentifier, NotificationType, ErrorHandler,
   ErrorAction, CloseAction, State as ClientState, RevealOutputChannelOn,
   ServerOptions, DocumentFilter,
-  WorkspaceFolder, NotificationType0
+  WorkspaceFolder, NotificationType0,
 } from 'coc.nvim'
 import {
   CodeActionKind,
   VersionedTextDocumentIdentifier,
   ExecuteCommandParams, DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, DidChangeConfigurationNotification,
-  ExecuteCommandRequest
+  ExecuteCommandRequest,
+  CodeActionRequest,
+  CodeActionParams,
+  CodeAction
 } from 'vscode-languageserver-protocol'
 
 import { findEslint, convert2RegExp, toOSPath, toPosixPath, Semaphore } from './utils'
@@ -914,38 +917,6 @@ function realActivate(context: ExtensionContext): void {
     updateStatusBar(status, isValidated)
   }
 
-  // TODO Could be useful in the feature.
-  function readCodeActionsOnSaveSetting(document: TextDocument): boolean {
-    let result: boolean | undefined = undefined
-    const languageConfig = Workspace.getConfiguration(undefined, document.uri).get<LanguageSettings>(`[${document.languageId}]`)
-
-    function isEnabled(value: CodeActionsOnSave | string[]): boolean | undefined {
-      if (value === undefined || value === null) {
-        return undefined
-      }
-      if (Array.isArray(value)) {
-        const result = value.some((element) => { return element === 'source.fixAll.eslint' || element === 'source.fixAll' })
-        return result === true ? true : undefined
-      } else {
-        return value['source.fixAll.eslint'] ?? value['source.fixAll']
-      }
-    }
-
-    if (languageConfig !== undefined) {
-      const codeActionsOnSave = languageConfig?.['editor.codeActionsOnSave']
-      if (codeActionsOnSave !== undefined) {
-        result = isEnabled(codeActionsOnSave)
-      }
-    }
-    if (result === undefined) {
-      const codeActionsOnSave = Workspace.getConfiguration('editor', document.uri).get<CodeActionsOnSave>('codeActionsOnSave')
-      if (codeActionsOnSave !== undefined) {
-        result = isEnabled(codeActionsOnSave)
-      }
-    }
-    return result ?? false
-  }
-
   const serverModule = context.asAbsolutePath('lib/server.js')
   // Uri.joinPath(context.extensionUri, 'server', 'out', 'eslintServer.js').fsPath
   const eslintConfig = Workspace.getConfiguration('eslint')
@@ -1214,6 +1185,37 @@ function realActivate(context: ExtensionContext): void {
     Window.showErrorMessage(`The ESLint extension couldn't be started. See the ESLint output channel for details.`)
     return
   }
+
+  Workspace.registerAutocmd({
+    request: true,
+    event: 'BufWritePre',
+    arglist: [`+expand('<abuf>')`],
+    callback: async (bufnr: number) => {
+      let doc = Workspace.getDocument(bufnr)
+      if (!doc || !doc.attached) return
+      if (computeValidate(doc.textDocument) == Validate.off) return
+      const config = Workspace.getConfiguration('eslint', doc.uri)
+      if (config.get('autoFixOnSave', false)) {
+        const params: CodeActionParams = {
+          textDocument: {
+            uri: doc.uri
+          },
+          range: Range.create(0, 0, doc.textDocument.lineCount, 0),
+          context: {
+            only: [`${CodeActionKind.SourceFixAll}.eslint`],
+            diagnostics: []
+          },
+        }
+        let res = await Promise.resolve(client.sendRequest(CodeActionRequest.type, params))
+        if (res && Array.isArray(res)) {
+          if (CodeAction.is(res[0])) {
+            await Workspace.applyEdit(res[0].edit)
+          }
+        }
+        console.log(res)
+      }
+    }
+  })
   // client.registerProposedFeatures()
 
   Workspace.onDidChangeConfiguration(() => {
