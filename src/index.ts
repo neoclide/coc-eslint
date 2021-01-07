@@ -922,6 +922,7 @@ function realActivate(context: ExtensionContext): void {
   const eslintConfig = Workspace.getConfiguration('eslint')
   const runtime = eslintConfig.get('runtime', undefined)
   const debug = eslintConfig.get('debug')
+  const argv = eslintConfig.get<string[]>('execArgv', [])
   const nodeEnv = eslintConfig.get('nodeEnv', null)
 
   let env: { [key: string]: string | number | boolean } | undefined
@@ -934,8 +935,8 @@ function realActivate(context: ExtensionContext): void {
     env.NODE_ENV = nodeEnv
   }
   const serverOptions: ServerOptions = {
-    run: { module: serverModule, transport: TransportKind.ipc, runtime, options: { cwd: Workspace.cwd, env } },
-    debug: { module: serverModule, transport: TransportKind.ipc, runtime, options: { execArgv: ['--nolazy', '--inspect=6011'], cwd: process.cwd(), env } }
+    run: { module: serverModule, transport: TransportKind.ipc, runtime, options: { cwd: Workspace.cwd, env, execArgv: argv } },
+    debug: { module: serverModule, transport: TransportKind.ipc, runtime, options: { execArgv: argv.concat(['--nolazy', '--inspect=6011']), cwd: process.cwd(), env } }
   }
 
   let defaultErrorHandler: ErrorHandler

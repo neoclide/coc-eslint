@@ -296,6 +296,14 @@
           "default": false,
           "description": "Enables ESLint debug mode (same as --debug on the command line)"
         },
+        "eslint.execArgv": {
+          "type": "array",
+          "default": [],
+          "description": "Arguments of node used on language server start.",
+          "items": {
+            "type": "string"
+          }
+        },
         "eslint.codeAction.disableRuleComment": {
           "scope": "resource",
           "type": "object",
