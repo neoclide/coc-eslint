@@ -1,6 +1,5 @@
 src
 tsconfig.json
-tslint.json
+server
 *.map
 yarn.lock
-webpack.config.js
