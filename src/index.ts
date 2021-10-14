@@ -567,7 +567,7 @@ async function askForLibraryConfirmation(client: LanguageClient | undefined, con
   }
 
   update && update()
-  client && client.sendNotification(DidChangeConfigurationNotification.type, { settings: {} })
+  client && client.sendNotification(DidChangeConfigurationNotification.type.method, { settings: {} })
 }
 
 async function resetLibraryConfirmations(client: LanguageClient | undefined, context: ExtensionContext, update: undefined | (() => void)): Promise<void> {
@@ -613,7 +613,7 @@ async function resetLibraryConfirmations(client: LanguageClient | undefined, con
   resource2ResourceInfo.clear()
   workspaceFolder2ExecutionInfos.clear()
   update && update()
-  client && client.sendNotification(DidChangeConfigurationNotification.type, { settings: {} })
+  client && client.sendNotification(DidChangeConfigurationNotification.type.method, { settings: {} })
 }
 
 export function activate(context: ExtensionContext) {
@@ -1207,7 +1207,7 @@ function realActivate(context: ExtensionContext): void {
             diagnostics: []
           },
         }
-        let res = await Promise.resolve(client.sendRequest(CodeActionRequest.type, params))
+        let res = await Promise.resolve(client.sendRequest(CodeActionRequest.type.method, params))
         if (res && Array.isArray(res)) {
           if (CodeAction.is(res[0])) {
             await Workspace.applyEdit(res[0].edit)
@@ -1485,7 +1485,6 @@ function realActivate(context: ExtensionContext): void {
       if (!doc || !doc.attached) {
         return
       }
-      doc.forceSync()
       const textDocument: VersionedTextDocumentIdentifier = {
         uri: doc.uri,
         version: doc.version
@@ -1495,7 +1494,7 @@ function realActivate(context: ExtensionContext): void {
         arguments: [textDocument]
       }
       await client.onReady()
-      client.sendRequest(ExecuteCommandRequest.type, params).then(undefined, () => {
+      client.sendRequest(ExecuteCommandRequest.type.method, params).then(undefined, () => {
         Window.showErrorMessage('Failed to apply ESLint fixes to the document. Please consider opening an issue with steps to reproduce.')
       })
     }),
