@@ -41,19 +41,9 @@
         "command": "eslint.showOutputChannel"
       },
       {
-        "title": "Reset Library Execution Decisions",
+        "title": "Restart ESLint Server",
         "category": "ESLint",
-        "command": "eslint.resetLibraryExecution"
-      },
-      {
-        "title": "Manage Library Execution",
-        "category": "ESLint",
-        "command": "eslint.manageLibraryExecution"
-      },
-      {
-        "title": "Run eslint for current project",
-        "category": "ESLint",
-        "command": "eslint.lintProject"
+        "command": "eslint.restart"
       }
     ],
     "configuration": {
@@ -91,7 +81,7 @@
             "null"
           ],
           "default": null,
-          "description": "The value of NODE_ENV to use when running eslint tasks."
+          "markdownDescription": "The value of `NODE_ENV` to use when running eslint tasks."
         },
         "eslint.nodePath": {
           "scope": "machine-overridable",
@@ -100,13 +90,13 @@
             "null"
           ],
           "default": null,
-          "description": "A path added to NODE_PATH when resolving the eslint module."
+          "markdownDescription": "A path added to `NODE_PATH` when resolving the eslint module."
         },
         "eslint.options": {
           "scope": "resource",
           "type": "object",
           "default": {},
-          "description": "The eslint options object to provide args normally passed to eslint when executed from a command line (see http://eslint.org/docs/developer-guide/nodejs-api#cliengine)."
+          "markdownDescription": "The eslint options object to provide args normally passed to eslint when executed from a command line (see https://eslint.org/docs/developer-guide/nodejs-api#eslint-class)."
         },
         "eslint.trace.server": {
           "scope": "window",
@@ -178,10 +168,15 @@
           "default": "off",
           "description": "Whether ESLint should issue a warning on ignored files."
         },
+        "eslint.useESLintClass": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Since version 7 ESLint offers a new API call ESLint. Use it even if the old CLIEngine is available. From version 8 on forward on ESLint class is available."
+        },
         "eslint.workingDirectories": {
           "scope": "resource",
           "type": "array",
-          "description": "Working directories for files in different folders.",
           "items": {
             "anyOf": [
               {
@@ -195,9 +190,9 @@
                     "enum": [
                       "auto",
                       "location"
-                    ]
-                  },
-                  "default": "location"
+                    ],
+                    "default": "location"
+                  }
                 },
                 "required": [
                   "mode"
@@ -236,7 +231,8 @@
                 ]
               }
             ]
-          }
+          },
+          "markdownDescription": "Specifies how the working directories ESLint is using are computed. ESLint resolves configuration files (e.g. `eslintrc`, `.eslintignore`) relative to a working directory so it is important to configure this correctly."
         },
         "eslint.validate": {
           "scope": "resource",
@@ -288,21 +284,22 @@
             "null"
           ],
           "default": null,
-          "description": "The location of the node binary to run ESLint under."
+          "markdownDescription": "The location of the node binary to run ESLint under.\n\n- When specified as a user/machine setting, the Node version from `eslint.runtime` automatically replaces the built-in version.\n- When specified as a workspace setting, `eslint.runtime` allows you to switch to use that version with the `ESLint: Select Node version` command."
+        },
+        "eslint.runtime.execArgv": {
+          "scope": "machine-overridable",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "markdownDescription": "Additional exec argv argument passed to the runtime. This can for example be used to control the maximum heap space using --max_old_space_size"
         },
         "eslint.debug": {
           "scope": "window",
           "type": "boolean",
           "default": false,
-          "description": "Enables ESLint debug mode (same as --debug on the command line)"
-        },
-        "eslint.execArgv": {
-          "type": "array",
-          "default": [],
-          "description": "Arguments of node used on language server start.",
-          "items": {
-            "type": "string"
-          }
+          "markdownDescription": "Enables ESLint debug mode (same as `--debug` on the command line)"
         },
         "eslint.codeAction.disableRuleComment": {
           "scope": "resource",
@@ -326,7 +323,9 @@
               "default": "separateLine",
               "description": "Configure the disable rule code action to insert the comment on the same line or a new line."
             }
-          }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "Show disable lint rule in the quick fix menu."
         },
         "eslint.codeAction.showDocumentation": {
           "scope": "resource",
@@ -340,7 +339,9 @@
               "default": true,
               "description": "Show the documentation code actions."
             }
-          }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "Show open lint rule documentation web page in the quick fix menu."
         },
         "eslint.codeActionsOnSave.mode": {
           "scope": "resource",
@@ -354,13 +355,47 @@
             "Only fixes reported problems that have non overlapping textual edits. This options runs a lot faster."
           ],
           "default": "all",
-          "description": "Specifies the code action mode. Possible values are 'all' and 'problems'."
+          "markdownDescription": "Specifies the code action mode. Possible values are 'all' and 'problems'."
+        },
+        "eslint.codeActionsOnSave.rules": {
+          "scope": "resource",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "markdownDescription": "The rules that should be executed when computing the code actions on save or formatting a file. Defaults to the rules configured via the ESLint configuration"
         },
         "eslint.format.enable": {
           "scope": "resource",
           "type": "boolean",
           "default": false,
           "description": "Enables ESLint as a formatter."
+        },
+        "eslint.rules.customizations": {
+          "items": {
+            "properties": {
+              "severity": {
+                "enum": [
+                  "downgrade",
+                  "error",
+                  "info",
+                  "default",
+                  "upgrade",
+                  "warn",
+                  "off"
+                ],
+                "type": "string"
+              },
+              "rule": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "scope": "resource",
+          "type": "array",
+          "description": "Override the severity of one or more rules reported by this extension, regardless of the project's ESLint config. Use globs to apply default severities for multiple rules."
         },
         "eslint.lintTask.options": {
           "scope": "resource",
