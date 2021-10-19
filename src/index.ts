@@ -665,13 +665,11 @@ function realActivate(context: ExtensionContext): void {
           }
           const result: (ConfigurationSettings | null)[] = []
           for (const item of params.items) {
-            console.error('config item:', item)
             if (item.section || !item.scopeUri) {
               result.push(null)
               continue
             }
             const resource = Uri.parse(item.scopeUri)
-            console.error('resource:', resource.fsPath, item.scopeUri)
             const config = Workspace.getConfiguration('eslint', resource.fsPath)
             const workspaceFolder = resource.scheme === 'untitled'
               ? Workspace.workspaceFolders !== undefined ? Workspace.workspaceFolders[0] : undefined
