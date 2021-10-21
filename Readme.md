@@ -56,7 +56,6 @@ In your vim/neovim run the following command:
 - `eslint.validate`: An array of language ids which should be validated by ESLint. If not installed ESLint will show an error.
 - `eslint.probe`: An array of language ids for which the extension should probe if support is installed. default: `["javascript","javascriptreact","typescript","typescriptreact","html","vue","markdown"]`
 - `eslint.runtime`: The location of the node binary to run ESLint under. default: `null`
-- `eslint.runtime.execArgv`: Additional exec argv argument passed to the runtime. default: `null`
 - `eslint.debug`: Enables ESLint debug mode (same as --debug on the command line) default: `false`
 - `eslint.codeAction.disableRuleComment`: default: `{"enable":true,"location":"separateLine"}`
 - `eslint.codeAction.showDocumentation`: default: `{"enable":true}`
