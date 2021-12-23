@@ -538,15 +538,10 @@ function realActivate(context: ExtensionContext): void {
   const execArgv = sanitize(eslintConfig.get<string[] | null>('execArgv', null) ?? undefined, 'string', undefined)
   const nodeEnv = sanitize(eslintConfig.get('nodeEnv', null) ?? undefined, 'string', undefined)
 
-  let env: { [key: string]: string | number | boolean } | undefined
-  if (debug) {
-    env = env || {}
-    env.DEBUG = 'eslint:*,-eslint:code-path'
-  }
-  if (nodeEnv !== undefined) {
-    env = env || {}
-    env.NODE_ENV = nodeEnv
-  }
+  let env: { [key: string]: string | number | boolean } = {}
+  if (debug) env.DEBUG = 'eslint:*,-eslint:code-path'
+  if (nodeEnv !== undefined) env.NODE_ENV = nodeEnv
+  env.PATH = process.env.PATH
   const debugArgv = ['--nolazy', '--inspect=6011']
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc, runtime, options: { execArgv, cwd: process.cwd(), env } },
