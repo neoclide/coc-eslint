@@ -811,6 +811,9 @@ function normalizeDriveLetter(path: string): string {
 
 function getFileSystemPath(uri: URI): string {
   let result = uri.fsPath
+  if (!fs.existsSync(result)) {
+    return result
+  }
   if (process.platform === 'win32' && result.length >= 2 && result[1] === ':') {
     // Node by default uses an upper case drive letter and ESLint uses
     // === to compare paths which results in the equal check failing
