@@ -29,8 +29,7 @@ In your vim/neovim run the following command:
   - `eslint.executeAutofix` Fix all auto-fixable Problems.
   - `eslint.createConfig` Create ESLint configuration.
   - `eslint.showOutputChannel` Show Output Channel.
-  - `eslint.resetLibraryExecution` Reset Library Execution Decisions.
-  - `eslint.manageLibraryExecution` Manage Library Execution.
+  - `eslint.restart` Restart ESLint Server.
   - `eslint.lintProject` Run eslint for current project, add errors to quickfix list.
 
 ## Configuration options
@@ -52,6 +51,7 @@ In your vim/neovim run the following command:
 - `eslint.quiet`: Turns on quiet mode, which ignores warnings. default: `false`
 - `eslint.onIgnoredFiles`: Whether ESLint should issue a warning on ignored files. default: `"off"`
   Valid options: ["warn","off"]
+- `eslint.useESLintClass`: Since version 7 ESLint offers a new API call ESLint. Use it even if the old CLIEngine is available. From version 8 on forward on ESLint class is available. default: `false`
 - `eslint.workingDirectories`: Working directories for files in different folders.
 - `eslint.validate`: An array of language ids which should be validated by ESLint. If not installed ESLint will show an error.
 - `eslint.probe`: An array of language ids for which the extension should probe if support is installed. default: `["javascript","javascriptreact","typescript","typescriptreact","html","vue","markdown"]`
@@ -61,6 +61,7 @@ In your vim/neovim run the following command:
 - `eslint.codeAction.showDocumentation`: default: `{"enable":true}`
 - `eslint.codeActionsOnSave.mode`: Specifies the code action mode. Possible values are 'all' and 'problems'. default: `"all"`
   Valid options: ["all","problems"]
+- `eslint.codeActionsOnSave.rules`: The rules that should be executed when computing the code actions on save or formatting a file. Defaults to the rules configured via the ESLint configuration.
 - `eslint.format.enable`: Enables ESLint as a formatter. default: `false`
 - `eslint.lintTask.options`: Command line options applied when running the task for linting the whole workspace (see https://eslint.org/docs/user-guide/command-line-interface). default: `["."]`
 
