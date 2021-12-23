@@ -4,6 +4,12 @@
  * ------------------------------------------------------------------------------------------ */
 'use strict'
 
+import * as path from 'path'
+import * as fs from 'fs'
+import * as crypto from 'crypto'
+import { execSync } from 'child_process'
+import { EOL } from 'os'
+
 import {
   createConnection, Connection, ResponseError, RequestType, NotificationType, RequestHandler, NotificationHandler,
   Diagnostic, DiagnosticSeverity, Range, Files, CancellationToken, TextDocuments, TextDocumentSyncKind, TextEdit,
@@ -11,7 +17,7 @@ import {
   ExecuteCommandRequest, DidChangeWatchedFilesNotification, DidChangeConfigurationNotification, WorkspaceFolder,
   DidChangeWorkspaceFoldersNotification, CodeAction, CodeActionKind, Position, DocumentFormattingRequest,
   DocumentFormattingRegistrationOptions, Disposable, DocumentFilter, TextDocumentEdit, LSPErrorCodes, DiagnosticTag, NotificationType0,
-  Message as LMessage, RequestMessage as LRequestMessage, ResponseMessage as LResponseMessage
+  Message as LMessage, RequestMessage as LRequestMessage, ResponseMessage as LResponseMessage, uinteger
 } from 'vscode-languageserver/node'
 
 import {
@@ -19,11 +25,7 @@ import {
 } from 'vscode-languageserver-textdocument'
 
 import { URI } from 'vscode-uri'
-import * as path from 'path'
-import * as fs from 'fs'
-import * as crypto from 'crypto'
-import { execSync } from 'child_process'
-import { EOL } from 'os'
+
 import { stringDiff } from './diff'
 import { LRUCache } from './linkedMap'
 
@@ -522,12 +524,11 @@ function getSeverityOverride(ruleId: string, customizations: RuleCustomization[]
   if (result !== undefined) {
     return result
   }
-  // TODO
-  // for (const customization of customizations) {
-  //   if (asteriskMatches(customization.rule, ruleId)) {
-  //     result = customization.severity
-  //   }
-  // }
+  for (const customization of customizations) {
+    if (asteriskMatches(customization.rule, ruleId)) {
+      result = customization.severity
+    }
+  }
   if (result === undefined) {
     ruleSeverityCache.set(ruleId, null)
     return undefined
@@ -550,44 +551,44 @@ function isOff(ruleId: string, matchers: string[]): boolean {
   return true
 }
 
-async function getSaveRuleConfig(filePath: string, settings: TextDocumentSettings & { library: ESLintModule }): Promise<SaveRuleConfigItem | undefined> {
-  let result = saveRuleConfigCache.get(filePath)
-  if (result === null) {
+async function getSaveRuleConfig(uri: string, settings: TextDocumentSettings & { library: ESLintModule }): Promise<SaveRuleConfigItem | undefined> {
+  const filePath = getFilePath(uri)
+  let result = saveRuleConfigCache.get(uri)
+  if (filePath === undefined || result === null) {
     return undefined
   }
   if (result !== undefined) {
     return result
   }
   const rules = settings.codeActionOnSave.rules
-  if (rules === undefined || !ESLintModule.hasESLintClass(settings.library) || !settings.useESLintClass) {
-    result = undefined
-  } else {
-    result = await withESLintClass(async (eslint) => {
-      const config = await eslint.calculateConfigForFile(filePath)
-      if (config === undefined || config.rules === undefined || config.rules.length === 0) {
-        return undefined
-      }
-      const offRules: Set<string> = new Set()
-      const onRules: Set<string> = new Set()
-      if (rules.length === 0) {
-        Object.keys(config.rules).forEach(ruleId => offRules.add(ruleId))
-      } else {
-        for (const ruleId of Object.keys(config.rules)) {
-          if (isOff(ruleId, rules)) {
-            offRules.add(ruleId)
-          } else {
-            onRules.add(ruleId)
-          }
+  result = await withESLintClass(async (eslint) => {
+    if (rules === undefined || eslint.isCLIEngine) {
+      return undefined
+    }
+    const config = await eslint.calculateConfigForFile(filePath)
+    if (config === undefined || config.rules === undefined || config.rules.length === 0) {
+      return undefined
+    }
+    const offRules: Set<string> = new Set()
+    const onRules: Set<string> = new Set()
+    if (rules.length === 0) {
+      Object.keys(config.rules).forEach(ruleId => offRules.add(ruleId))
+    } else {
+      for (const ruleId of Object.keys(config.rules)) {
+        if (isOff(ruleId, rules)) {
+          offRules.add(ruleId)
+        } else {
+          onRules.add(ruleId)
         }
       }
-      return offRules.size > 0 ? { offRules, onRules } : undefined
-    }, settings)
-  }
+    }
+    return offRules.size > 0 ? { offRules, onRules } : undefined
+  }, settings)
   if (result === undefined || result === null) {
-    saveRuleConfigCache.set(filePath, null)
+    saveRuleConfigCache.set(uri, null)
     return undefined
   } else {
-    saveRuleConfigCache.set(filePath, result)
+    saveRuleConfigCache.set(uri, result)
     return result
   }
 }
@@ -620,6 +621,7 @@ function makeDiagnostic(settings: TextDocumentSettings, problem: ESLintProblem):
       result.tags = [DiagnosticTag.Unnecessary]
     }
   }
+
   return [result, override]
 }
 
@@ -891,6 +893,7 @@ process.on('uncaughtException', (error: any) => {
     console.error(message)
   }
 })
+
 
 function isRequestMessage(message: LMessage | undefined): message is LRequestMessage {
   const candidate = <LRequestMessage>message
@@ -1419,7 +1422,6 @@ function setupDocumentsListeners() {
   // A text document has changed. Validate the document according the run setting.
   documents.onDidChangeContent((event) => {
     const uri = event.document.uri
-
     codeActions.delete(uri)
     void resolveSettings(event.document).then((settings) => {
       if (settings.validate !== Validate.on || settings.run !== 'onType') {
@@ -2037,20 +2039,36 @@ messageQueue.registerRequest(CodeActionRequest.type, (params) => {
     return action
   }
 
-  function createDisableLineTextEdit(editInfo: Problem, indentationText: string): TextEdit {
-    return TextEdit.insert(Position.create(editInfo.line - 1, 0), `${indentationText}${getLineComment(textDocument!.languageId)} eslint-disable-next-line ${editInfo.ruleId}${EOL}`)
+
+  function createDisableLineTextEdit(textDocument: TextDocument, editInfo: Problem, indentationText: string): TextEdit {
+    // if the concerned line is not the first  line of the file
+    if (editInfo.line - 1 > 0) {
+
+      // check previous line if there is a eslint-disable-next-line comment already present
+      const prevLine = textDocument.getText(Range.create(Position.create(editInfo.line - 2, 0), Position.create(editInfo.line - 2, uinteger.MAX_VALUE)))
+      const matched = prevLine && prevLine.match(new RegExp(`${getLineComment(textDocument.languageId)} eslint-disable-next-line`))
+      if (matched && matched.length) {
+        return TextEdit.insert(Position.create(editInfo.line - 2, uinteger.MAX_VALUE), `, ${editInfo.ruleId}`)
+      }
+
+    }
+    return TextEdit.insert(Position.create(editInfo.line - 1, 0), `${indentationText}${getLineComment(textDocument.languageId)} eslint-disable-next-line ${editInfo.ruleId}${EOL}`)
   }
 
-  function createDisableSameLineTextEdit(editInfo: Problem): TextEdit {
-    // Todo@dbaeumer Use uinteger.MAX_VALUE instead.
-    return TextEdit.insert(Position.create(editInfo.line - 1, 2147483647), ` ${getLineComment(textDocument!.languageId)} eslint-disable-line ${editInfo.ruleId}`)
+  function createDisableSameLineTextEdit(textDocument: TextDocument, editInfo: Problem): TextEdit {
+    const currentLine = textDocument.getText(Range.create(Position.create(editInfo.line - 1, 0), Position.create(editInfo.line - 1, uinteger.MAX_VALUE)))
+    const matched = currentLine && new RegExp(`${getLineComment(textDocument.languageId)} eslint-disable-line`).exec(currentLine)
+
+    const disableRuleContent = (matched && matched.length) ? `, ${editInfo.ruleId}` : ` ${getLineComment(textDocument.languageId)} eslint-disable-line ${editInfo.ruleId}`
+
+    return TextEdit.insert(Position.create(editInfo.line - 1, uinteger.MAX_VALUE), disableRuleContent)
   }
 
-  function createDisableFileTextEdit(editInfo: Problem): TextEdit {
-    // If firts line contains a shebang, insert on the next line instead.
-    const shebang = textDocument?.getText(Range.create(Position.create(0, 0), Position.create(0, 2)))
+  function createDisableFileTextEdit(textDocument: TextDocument, editInfo: Problem): TextEdit {
+    // If first line contains a shebang, insert on the next line instead.
+    const shebang = textDocument.getText(Range.create(Position.create(0, 0), Position.create(0, 2)))
     const line = shebang === '#!' ? 1 : 0
-    const block = getBlockComment(textDocument!.languageId)
+    const block = getBlockComment(textDocument.languageId)
     return TextEdit.insert(Position.create(line, 0), `${block[0]} eslint-disable ${editInfo.ruleId} ${block[1]}${EOL}`)
   }
 
@@ -2150,13 +2168,12 @@ messageQueue.registerRequest(CodeActionRequest.type, (params) => {
       if (settings.codeAction.disableRuleComment.enable) {
         let workspaceChange = new WorkspaceChange()
         if (settings.codeAction.disableRuleComment.location === 'sameLine') {
-          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableSameLineTextEdit(editInfo))
+          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableSameLineTextEdit(textDocument, editInfo))
         } else {
-          // Todo@dbaeumer Use uinteger.MAX_VALUE instead.
-          const lineText = textDocument.getText(Range.create(Position.create(editInfo.line - 1, 0), Position.create(editInfo.line - 1, 2147483647)))
+          const lineText = textDocument.getText(Range.create(Position.create(editInfo.line - 1, 0), Position.create(editInfo.line - 1, uinteger.MAX_VALUE)))
           const matches = /^([ \t]*)/.exec(lineText)
           const indentationText = matches !== null && matches.length > 0 ? matches[1] : ''
-          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableLineTextEdit(editInfo, indentationText))
+          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableLineTextEdit(textDocument, editInfo, indentationText))
         }
         changes.set(`${CommandIds.applyDisableLine}:${ruleId}`, workspaceChange)
         result.get(ruleId).disable = createCodeAction(
@@ -2168,7 +2185,7 @@ messageQueue.registerRequest(CodeActionRequest.type, (params) => {
 
         if (result.get(ruleId).disableFile === undefined) {
           workspaceChange = new WorkspaceChange()
-          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableFileTextEdit(editInfo))
+          workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableFileTextEdit(textDocument, editInfo))
           changes.set(`${CommandIds.applyDisableFile}:${ruleId}`, workspaceChange)
           result.get(ruleId).disableFile = createCodeAction(
             `Disable ${ruleId} for the entire file`,
@@ -2264,7 +2281,7 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
     connection.tracer.log(`Computing all fixes took: ${Date.now() - start} ms.`)
     return result
   } else {
-    const saveConfig = filePath !== undefined && mode === AllFixesMode.onSave ? await getSaveRuleConfig(filePath, settings) : undefined
+    const saveConfig = filePath !== undefined && mode === AllFixesMode.onSave ? await getSaveRuleConfig(uri, settings) : undefined
     const offRules = saveConfig?.offRules
     const onRules = saveConfig?.onRules
     let overrideConfig: Required<ConfigData> | undefined
@@ -2320,7 +2337,7 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
 
 messageQueue.registerRequest(ExecuteCommandRequest.type, async (params) => {
   let workspaceChange: WorkspaceChange | undefined
-  const commandParams: CommandParams = params.arguments![0]
+  const commandParams: CommandParams = params.arguments![0] as CommandParams
   if (params.command === CommandIds.applyAllFixes) {
     const edits = await computeAllFixes(commandParams, AllFixesMode.command)
     if (edits !== undefined) {
@@ -2355,7 +2372,7 @@ messageQueue.registerRequest(ExecuteCommandRequest.type, async (params) => {
     connection.console.error(`Failed to apply command: ${params.command}`)
   })
 }, (params): number | undefined => {
-  const commandParam: CommandParams = params.arguments![0]
+  const commandParam: CommandParams = params.arguments![0] as CommandParams
   if (changes.isUsable(commandParam.uri, commandParam.version)) {
     return commandParam.version
   } else {

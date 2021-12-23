@@ -489,7 +489,7 @@ function realActivate(context: ExtensionContext): void {
   }
 
   function updateStatusBar(uri: string | undefined) {
-    const status = function () {
+    const status = function() {
       if (serverRunning === false) {
         return Status.error
       }

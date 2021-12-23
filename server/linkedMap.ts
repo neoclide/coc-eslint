@@ -22,7 +22,7 @@ export type Touch = 0 | 1 | 2
 
 export class LinkedMap<K, V> implements Map<K, V> {
 
-  readonly [Symbol.toStringTag] = 'LinkedMap'
+  readonly [Symbol.toStringTag] = 'LinkedMap';
 
   private _map: Map<K, Item<K, V>>
   private _head: Item<K, V> | undefined
