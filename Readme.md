@@ -4,8 +4,6 @@ Eslint language server extension for [coc.nvim](https://github.com/neoclide/coc.
 
 Forked from [vscode-eslint](https://github.com/Microsoft/vscode-eslint).
 
-**Note** invoke `eslint.showOutputChannel` to invoke command of current eslint statusline.
-
 ## Supporting
 
 If you like my extension, consider supporting me on Patreon or PayPal:
@@ -31,6 +29,8 @@ In your vim/neovim run the following command:
   - `eslint.showOutputChannel` Show Output Channel.
   - `eslint.restart` Restart ESLint Server.
   - `eslint.lintProject` Run eslint for current project, add errors to quickfix list.
+
+**Note:** eslint may not work with files just created, invoke `:CocCommand eslint.restart` on that case.
 
 ## Configuration options
 
