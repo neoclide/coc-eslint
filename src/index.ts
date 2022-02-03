@@ -666,9 +666,9 @@ function realActivate(context: ExtensionContext): void {
             }
             const resource = Uri.parse(item.scopeUri)
             const config = Workspace.getConfiguration('eslint', resource.fsPath)
-            const workspaceFolder = resource.scheme === 'untitled'
+            let workspaceFolder = resource.scheme === 'untitled'
               ? Workspace.workspaceFolders !== undefined ? Workspace.workspaceFolders[0] : undefined
-              : Workspace.getWorkspaceFolder(resource.fsPath)
+              : Workspace.getWorkspaceFolder(resource.toString())
             const settings: ConfigurationSettings = {
               validate: Validate.off,
               packageManager: config.get('packageManager', 'npm'),
@@ -705,7 +705,7 @@ function realActivate(context: ExtensionContext): void {
               settings.codeActionOnSave.mode = CodeActionsOnSaveMode.from(config.get('codeActionsOnSave.mode', CodeActionsOnSaveMode.all))
               settings.codeActionOnSave.rules = CodeActionsOnSaveRules.from(config.get('codeActionsOnSave.rules', null))
             }
-            if (workspaceFolder !== undefined) {
+            if (workspaceFolder != null) {
               settings.workspaceFolder = {
                 name: workspaceFolder.name,
                 uri: workspaceFolder.uri
