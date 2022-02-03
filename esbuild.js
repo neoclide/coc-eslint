@@ -14,8 +14,8 @@ let entryPlugin = {
       let contents = ''
       if (args.path == 'index.ts') {
         contents = `
-        import {activate, deactivate} from './src/index'
-        export {activate, deactivate}
+        import {activate} from './src/index'
+        export {activate}
         `
       } else if (args.path == 'server.ts') {
         contents = `require('./server/eslintServer')`

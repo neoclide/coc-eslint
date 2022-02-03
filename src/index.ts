@@ -14,6 +14,7 @@ import {
   ErrorAction, CloseAction, State as ClientState, RevealOutputChannelOn,
   ServerOptions, DocumentFilter,
   WorkspaceFolder, NotificationType0,
+  services
 } from 'coc.nvim'
 import {
   CodeActionKind,
@@ -800,6 +801,7 @@ function realActivate(context: ExtensionContext): void {
     void Window.showErrorMessage(`The ESLint extension couldn't be started. See the ESLint output channel for details.`)
     return
   }
+  context.subscriptions.push(services.registLanguageClient(client))
 
   Workspace.registerAutocmd({
     request: true,
@@ -1007,7 +1009,6 @@ function realActivate(context: ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    client.start(),
     events.on('BufEnter', () => {
       updateStatusBar(undefined)
     }),
@@ -1052,10 +1053,4 @@ function realActivate(context: ExtensionContext): void {
       }
     })
   )
-}
-
-export function deactivate() {
-  if (onActivateCommands) {
-    onActivateCommands.forEach(command => command.dispose())
-  }
 }
