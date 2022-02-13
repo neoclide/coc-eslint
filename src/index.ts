@@ -884,6 +884,7 @@ function realActivate(context: ExtensionContext): void {
 
     client.onNotification(exitCalled, (params) => {
       serverCalledProcessExit = true
+      if (params[0] == 0) return
       client.error(`Server process exited with code ${params[0]}. This usually indicates a misconfigured ESLint setup.`, params[1])
       void Window.showErrorMessage(`ESLint server shut down itself. See 'ESLint' output channel for details.`, { title: 'Open Output', id: 1 }).then((value) => {
         if (value !== undefined && value.id === 1) {
