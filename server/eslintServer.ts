@@ -861,16 +861,6 @@ function getFilePath(documentOrUri: string | TextDocument | URI | undefined): st
   return getFileSystemPath(uri)
 }
 
-const exitCalled = new NotificationType<[number, string]>('eslint/exitCalled')
-
-const nodeExit = process.exit
-process.exit = ((code?: number): void => {
-  const stack = new Error('stack')
-  connection.sendNotification(exitCalled, [code ? code : 0, stack.stack])
-  setTimeout(() => {
-    nodeExit(code)
-  }, 1000)
-}) as any
 process.on('uncaughtException', (error: any) => {
   let message: string | undefined
   if (error) {
