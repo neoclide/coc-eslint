@@ -74,6 +74,11 @@
           "description": "Always show the ESlint status bar item.",
           "scope": "window"
         },
+        "eslint.fixOnSaveTimeout": {
+          "type": "integer",
+          "description": "Timeout in miliseconds when run auto fix on save.",
+          "default": 1000
+        },
         "eslint.nodeEnv": {
           "scope": "resource",
           "type": [
@@ -293,7 +298,6 @@
           "markdownDescription": "Enables ESLint debug mode (same as `--debug` on the command line)"
         },
         "eslint.execArgv": {
-          "scope": "machine-overridable",
           "type": "array",
           "items": {
             "type": "string"

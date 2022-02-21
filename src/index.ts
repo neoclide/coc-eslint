@@ -10,6 +10,7 @@ import {
   workspace as Workspace, events, window as Window, commands as Commands, Disposable, ExtensionContext, Uri, TextDocument, CodeActionContext, Diagnostic, ProviderResult, Command,
   WorkspaceFolder as VWorkspaceFolder, MessageItem,
   Range,
+  CancellationTokenSource,
   LanguageClient, LanguageClientOptions, RequestType, TransportKind, TextDocumentIdentifier, NotificationType, ErrorHandler,
   ErrorAction, CloseAction, State as ClientState, RevealOutputChannelOn,
   ServerOptions, DocumentFilter,
@@ -812,7 +813,9 @@ function realActivate(context: ExtensionContext): void {
       if (!doc || !doc.attached) return
       if (computeValidate(doc.textDocument) == Validate.off) return
       const config = Workspace.getConfiguration('eslint', doc.uri)
+      const onSaveTimeout = config.get<number>('fixOnSaveTimeout', 1000)
       if (config.get('autoFixOnSave', false)) {
+        client.outputChannel.appendLine(`Auto fix on save for buffer: ${bufnr}`)
         const params: CodeActionParams = {
           textDocument: {
             uri: doc.uri
@@ -823,9 +826,22 @@ function realActivate(context: ExtensionContext): void {
             diagnostics: []
           },
         }
-        let res = await Promise.resolve(client.sendRequest(CodeActionRequest.type.method, params))
+        const source = new CancellationTokenSource()
+        let timer: NodeJS.Timeout
+        let tf = new Promise<void>(resolve => {
+          timer = setTimeout(() => {
+            client.outputChannel.appendLine(`Auto fix timeout for buffer: ${bufnr}`)
+            source.cancel()
+            resolve()
+          }, onSaveTimeout)
+        })
+        // await Promise.race
+        let res = await Promise.race([tf, client.sendRequest(CodeActionRequest.type.method, params, source.token)])
+        clearTimeout(timer)
+        if (source.token.isCancellationRequested) return
         if (res && Array.isArray(res)) {
           if (CodeAction.is(res[0])) {
+            client.outputChannel.appendLine(`Apply auto fix for buffer: ${bufnr}`)
             await Workspace.applyEdit(res[0].edit)
           }
         }

@@ -38,6 +38,7 @@ In your vim/neovim run the following command:
 
 - `eslint.enable`: Controls whether eslint is enabled or not. default: `true`
 - `eslint.execArgv`: Arguments of node used on language server start. default: `[]`
+- `eslint.fixOnSaveTimeout`: Timeout for auto fix on save, default: `1000`
 - `eslint.packageManager`: The package manager you use to install node modules. default: `"npm"`
   Valid options: ["npm","yarn","pnpm"]
 - `eslint.alwaysShowStatus`: Always show the ESlint status bar item. default: `false`
