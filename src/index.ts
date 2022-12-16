@@ -213,6 +213,9 @@ interface RuleCustomization {
 interface ConfigurationSettings {
   validate: Validate
   packageManager: 'npm' | 'yarn' | 'pnpm'
+  experimental: {
+    useFlatConfig: boolean
+  }
   useESLintClass: boolean
   codeAction: CodeActionSettings
   codeActionOnSave: CodeActionsOnSaveSettings
@@ -675,6 +678,9 @@ function realActivate(context: ExtensionContext): void {
               validate: Validate.off,
               packageManager: config.get('packageManager', 'npm'),
               useESLintClass: config.get('useESLintClass', false),
+              experimental: {
+                useFlatConfig: config.get<boolean>('experimental.useFlatConfig', false)
+              },
               codeActionOnSave: {
                 enable: false,
                 mode: CodeActionsOnSaveMode.all
