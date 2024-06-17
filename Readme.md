@@ -13,6 +13,11 @@ In your vim/neovim run the following command:
 ```sh
 :CocInstall coc-eslint
 ```
+`eslint` and a config file must be available, for example:
+
+```sh
+npm install eslint --global
+```
 
 ## Features
 
