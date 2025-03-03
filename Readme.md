@@ -13,6 +13,23 @@ In your vim/neovim run the following command:
 ```sh
 :CocInstall coc-eslint
 ```
+`eslint` and a config file must be available, for example:
+
+```sh
+npm install eslint --global
+```
+Example config file, in the root of the project: `eslint.config.mjs`:
+
+```json
+export default [
+	{
+		rules: {
+			"prefer-const": "error",
+			"no-undef": "error"
+		}
+	}
+];
+```
 
 ## Features
 
