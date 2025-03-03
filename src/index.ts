@@ -1054,7 +1054,7 @@ function realActivate(context: ExtensionContext): void {
         arguments: [textDocument]
       }
       await client.onReady()
-      client.sendRequest(ExecuteCommandRequest.type.method, params).then(undefined, () => {
+      await client.sendRequest(ExecuteCommandRequest.type.method, params).then(undefined, () => {
         void Window.showErrorMessage('Failed to apply ESLint fixes to the document. Please consider opening an issue with steps to reproduce.')
       })
     }),
