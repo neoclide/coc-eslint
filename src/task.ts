@@ -32,7 +32,7 @@ export default class EslintTask implements Disposable {
     }))
     task.onExit(code => {
       if (code != 0) {
-        window.showMessage(`Eslint found issues`, 'warning')
+        window.showWarningMessage(`Eslint found issues`)
       }
       this.onStop()
     })
@@ -42,7 +42,7 @@ export default class EslintTask implements Disposable {
       }
     })
     task.onStderr(lines => {
-      window.showMessage(`TSC error: ` + lines.join('\n'), 'error')
+      window.showErrorMessage(`Eslint error: ` + lines.join('\n'))
     })
     this.disposables.push(Disposable.create(() => {
       task.dispose()
@@ -77,12 +77,16 @@ export default class EslintTask implements Disposable {
       type: /error/i.test(ms[5]) ? 'E' : 'W'
     } as any
     if (bufnr) item.bufnr = bufnr
+    console.log(item)
     workspace.nvim.call('setqflist', [[item], 'a'])
   }
+
   public async getOptions(): Promise<TaskOptions> {
-    let root = Uri.parse(workspace.workspaceFolder.uri).fsPath
+    let folders = workspace.workspaceFolders
+    if (folders.length === 0) return
+    let root = Uri.parse(folders[0].uri).fsPath
     let cmd = await findEslint(root)
-    let config = workspace.getConfiguration('eslint')
+    let config = workspace.getConfiguration('eslint', folders[0])
     let args = config.get<string[]>('lintTask.options', ['.'])
     return {
       cmd,

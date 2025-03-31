@@ -14,7 +14,7 @@ let entryPlugin = {
       let contents = ''
       if (args.path == 'index.ts') {
         contents = `
-        import {activate} from './src/index'
+        import {activate} from './src/extension'
         export {activate}
         `
       } else if (args.path == 'server.ts') {
@@ -36,7 +36,7 @@ async function start() {
     define: {'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')},
     bundle: true,
     platform: 'node',
-    target: 'node12.16',
+    target: 'node16.18',
     mainFields: ['module', 'main'],
     minify: isProduction,
     sourcemap: !isProduction,

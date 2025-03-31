@@ -1,6 +1,6 @@
 {
   "name": "coc-eslint",
-  "version": "1.7.0",
+  "version": "3.0.13",
   "description": "Eslint extension for coc.nvim",
   "main": "lib/index.js",
   "publisher": "chemzqm",
@@ -13,7 +13,7 @@
     "eslint"
   ],
   "engines": {
-    "coc": "^0.0.80"
+    "coc": "^0.0.82"
   },
   "scripts": {
     "clean": "rimraf lib",
@@ -41,9 +41,24 @@
         "command": "eslint.showOutputChannel"
       },
       {
+        "title": "Migrate Settings",
+        "category": "ESLint",
+        "command": "eslint.migrateSettings"
+      },
+      {
         "title": "Restart ESLint Server",
         "category": "ESLint",
         "command": "eslint.restart"
+      },
+      {
+        "title": "Revalidate all open files",
+        "category": "ESLint",
+        "command": "eslint.revalidate"
+      },
+      {
+        "title": "Lint current project and set errors to quickfix list of vim.",
+        "category": "ESLint",
+        "command": "eslint.lintProject"
       }
     ],
     "configuration": {
@@ -71,7 +86,7 @@
           "type": "boolean",
           "default": false,
           "description": "Always show the ESlint status bar item.",
-          "scope": "window"
+          "scope": "application"
         },
         "eslint.fixOnSaveTimeout": {
           "type": "integer",
@@ -416,23 +431,114 @@
           "items": {
             "type": "string"
           }
+        },
+        "eslint.problems.shortenToSingleLine": {
+          "type": "boolean",
+          "default": false,
+          "description": "Shortens the text spans of underlined problems to their first related line.",
+          "scope": "resource"
+        },
+        "eslint.migration.2_x": {
+          "scope": "application",
+          "type": "string",
+          "enum": [
+            "off",
+            "on"
+          ],
+          "default": "on",
+          "description": "Whether ESlint should migrate auto fix on save settings."
+        },
+        "eslint.useFlatConfig": {
+          "scope": "resource",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null,
+          "markdownDescription": "Controls whether flat config should be used or not. This setting requires ESLint version 8.57 or later and is interpreted according to the [ESLint Flat Config rollout plan](https://eslint.org/blog/2023/10/flat-config-rollout-plans/). This means:\n\n - *8.57.0 <= ESLint version < 9.x*: setting is honored and defaults to false\n- *9.0.0 <= ESLint version < 10.x*: settings is honored and defaults to true\n- *10.0.0 <= ESLint version*: setting is ignored. Flat configs are the default and can't be turned off."
+        },
+        "eslint.ignoreUntitled": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "If true, untitled files won't be validated by ESLint."
+        },
+        "eslint.timeBudget.onValidation": {
+          "scope": "resource",
+          "type": "object",
+          "properties": {
+            "warn": {
+              "type": "number",
+              "default": 4000,
+              "minimum": 0,
+              "markdownDescription": "The time budget in milliseconds to spend on validation before showing a warning."
+            },
+            "error": {
+              "type": "number",
+              "default": 8000,
+              "minimum": 0,
+              "markdownDescription": "The time budget in milliseconds to spend on validation before showing an error."
+            }
+          },
+          "default": {
+            "warn": 4000,
+            "error": 8000
+          },
+          "markdownDescription": "The time budget in milliseconds to spend on validation before showing a warning or error."
+        },
+        "eslint.timeBudget.onFixes": {
+          "scope": "resource",
+          "type": "object",
+          "properties": {
+            "warn": {
+              "type": "number",
+              "default": 3000,
+              "minimum": 0,
+              "markdownDescription": "The time budget in milliseconds to spend on computing fixes before showing a warning."
+            },
+            "error": {
+              "type": "number",
+              "default": 6000,
+              "minimum": 0,
+              "markdownDescription": "The time budget in milliseconds to spend on computing fixes before showing an error."
+            }
+          },
+          "default": {
+            "warn": 3000,
+            "error": 6000
+          },
+          "markdownDescription": "The time budget in milliseconds to spend on computing fixes before showing a warning or error."
         }
       }
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": ".eslintrc",
+        "url": "https://json.schemastore.org/eslintrc"
+      },
+      {
+        "fileMatch": ".eslintrc.json",
+        "url": "https://json.schemastore.org/eslintrc"
+      },
+      {
+        "fileMatch": "package.json",
+        "url": "./package-json-schema.json"
+      }
+    ]
   },
   "author": "chemzqm@gmail.com",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^10.12.0",
-    "coc.nvim": "^0.0.81-next.11",
-    "esbuild": "^0.14.11",
-    "eslint": "^8.7.0",
-    "rimraf": "^3.0.0",
-    "typescript": "^4.1.2",
-    "vscode-languageserver": "8.0.0-next.5",
-    "vscode-languageserver-textdocument": "1.0.2",
-    "vscode-languageserver-protocol": "3.16.0",
-    "vscode-uri": "^3.0.2"
+    "@types/node": "^16.18",
+    "@types/semver": "^7.5.8",
+    "coc.nvim": "^0.0.83-next.22",
+    "semver": "^7.6.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.3",
+    "vscode-languageserver": "10.0.0-next.10",
+    "vscode-languageserver-textdocument": "1.0.11",
+    "vscode-languageserver-protocol": "3.17.5",
+    "vscode-uri": "^3.0.8"
   },
   "dependencies": {}
 }

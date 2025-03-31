@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "properties": {
+    "eslintConfig": {
+      "description": "ESLint configuration",
+      "$ref": "https://json.schemastore.org/eslintrc"
+    }
+  }
+}
