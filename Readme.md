@@ -37,6 +37,7 @@ export default [
 - Lint `javascript` files using eslint.
 - Provide `codeActions` for fixing lint issues.
 - Provide eslint commands:
+  - `eslint.lintProject` Lint current project and set errors & warnings to vim's quickfix list.
   - `eslint.executeAutofix` Fix all auto-fixable Problems
   - `eslint.createConfig` Create ESLint configuration
   - `eslint.showOutputChannel` Show Output Channel

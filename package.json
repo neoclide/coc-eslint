@@ -56,7 +56,7 @@
         "command": "eslint.revalidate"
       },
       {
-        "title": "Lint current project and set errors to quickfix list of vim.",
+        "title": "Lint current project and set errors & warnings to quickfix list of vim.",
         "category": "ESLint",
         "command": "eslint.lintProject"
       }
