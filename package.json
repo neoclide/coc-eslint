@@ -6,7 +6,7 @@
   "publisher": "chemzqm",
   "repository": {
     "type": "git",
-    "url": "https://github.com/neoclide/coc-eslint.git"
+    "url": "git+https://github.com/neoclide/coc-eslint.git"
   },
   "keywords": [
     "coc.nvim",
