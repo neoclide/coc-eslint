@@ -99,7 +99,7 @@ export default [
 The extension supports automatic fixing of warnings to the extent that it is supported by eslint.
 For warnings which support an auto-fix. You can apply the quick fix by either:
 
-- Configure `editor.codeActionsOnSave` with property `"source.fixAll.eslint": true` (Warning: need coc.nvim support, not work yet!)
+- Configure `editor.codeActionsOnSave` with property `"source.fixAll.eslint": true`.
 - ~Set `eslint.autoFixOnSave` to `true` and save your file~
 - Trigger `<Plug>(coc-codeaction)` with mapped keys, and select a fix action in the input list.
 - Run command `:CocCommand eslint.executeAutofix`.
