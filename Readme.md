@@ -13,6 +13,7 @@ In your vim/neovim run the following command:
 ```sh
 :CocInstall coc-eslint
 ```
+
 `eslint` and a config file must be available, for example:
 
 ```sh
@@ -31,6 +32,10 @@ export default [
 	}
 ];
 ```
+
+**Note**: the eslint config file should in your workspace folder `:h coc-workspace-folders`.
+**Note**: configuration `eslint.probe` is ignored when `eslint.validate` exists.
+
 
 ## Features
 
