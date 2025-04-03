@@ -22,7 +22,7 @@ npm install eslint --global
 
 Example config file, in the root of the project: `eslint.config.mjs`:
 
-```json
+```javascript
 export default [
 	{
 		rules: {
@@ -34,6 +34,7 @@ export default [
 ```
 
 **Note**: the eslint config file should in your workspace folder `:h coc-workspace-folders`.
+
 **Note**: configuration `eslint.probe` is ignored when `eslint.validate` exists.
 
 
