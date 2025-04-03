@@ -4,8 +4,6 @@ Eslint language server extension for [coc.nvim](https://github.com/neoclide/coc.
 
 Forked from [vscode-eslint](https://github.com/Microsoft/vscode-eslint).
 
-**Note** buffers need save to disk to make this extension work as expected.
-
 ## Install
 
 In your vim/neovim run the following command:
@@ -33,10 +31,16 @@ export default [
 ];
 ```
 
-**Note**: the eslint config file should in your workspace folder `:h coc-workspace-folders`.
+## Important notice
 
-**Note**: configuration `eslint.probe` is ignored when `eslint.validate` exists.
-
+* This extension may not work with files just created, save the file and execute
+  `:CocCommand eslint.restart` on that case.
+* The eslint config file should inside your workspace folder for project lint to
+  work `:h coc-workspace-folders`.
+* Configuration `eslint.probe` is ignored when `eslint.validate` exists, configure
+  `eslint.validate` for your project is recommended.
+* `eslint.autoFixOnSave` is deprecated, use `:CocCommand eslint.migrateSettings`
+  for migrate to new configuration by use `editor.codeActionsOnSave` configuration.
 
 ## Features
 
@@ -50,8 +54,6 @@ export default [
   - `eslint.migrateSettings` Migrate Settings
   - `eslint.restart` Restart ESLint Server
   - `eslint.revalidate` Revalidate all open files
-
-**Note:** eslint may not work with files just created, invoke `:CocCommand eslint.restart` on that case.
 
 ## Differences with vscode-eslint
 
