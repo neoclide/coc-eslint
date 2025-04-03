@@ -1,7 +1,6 @@
-import { commands, disposeAll, StatusBarItem, Task, TaskOptions, Uri, window, workspace } from 'coc.nvim'
-import { Disposable, Location } from 'coc.nvim'
-import { findEslint } from './utils'
+import { commands, Disposable, disposeAll, Location, StatusBarItem, Task, TaskOptions, Uri, window, workspace } from 'coc.nvim'
 import path from 'path'
+import { findEslint } from './utils'
 
 const errorRegex = /^(.+):(\d+):(\d+):\s*(.+?)\s\[(\w+)\/?(.*)\]/
 
@@ -35,7 +34,9 @@ export default class EslintTask implements Disposable {
     let lastline: string = ''
     task.onExit(code => {
       if (code != 0) {
-        window.showWarningMessage(`Eslint found issues: ${lastline}`)
+        window.showWarningMessage(`Eslint found: ${lastline}`)
+      } else {
+        window.showInformationMessage(`Eslint no problem.`)
       }
       this.onStop()
     })
@@ -56,7 +57,7 @@ export default class EslintTask implements Disposable {
         }
       }
       let last = lines[lines.length - 1]
-      if (last.endsWith('problems')) lastline = last
+      if (last.includes('problem')) lastline = last
     })
     task.onStderr(lines => {
       window.showErrorMessage(`Eslint error: ` + lines.join('\n'))
