@@ -41,6 +41,8 @@ export default [
   `eslint.validate` for your project is recommended.
 * `eslint.autoFixOnSave` is deprecated, use `:CocCommand eslint.migrateSettings`
   for migrate to new configuration by use `editor.codeActionsOnSave` configuration.
+* `eslint.useFlatConfig` default to true and can't be turned off, consider
+  migrate your old configuration to use flat config instead.
 
 ## Features
 
