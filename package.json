@@ -69,6 +69,7 @@
           "scope": "resource",
           "type": "boolean",
           "default": true,
+          "deprecationMessage": "Use configuration eslint.validate is recommended.",
           "description": "Controls whether eslint is enabled or not."
         },
         "eslint.packageManager": {
