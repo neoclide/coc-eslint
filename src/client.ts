@@ -185,8 +185,9 @@ export namespace ESLintClient {
 
     // A map of documents synced to the server
     const syncedDocuments: Map<string, TextDocument> = new Map();
+    const serverFile = context.asAbsolutePath('lib/server.js')
     // The actual ESLint client
-    const client: LanguageClient = new LanguageClient('ESLint', createServerOptions(Uri.parse(context.extensionPath)), createClientOptions());
+    const client: LanguageClient = new LanguageClient('ESLint', createServerOptions(serverFile), createClientOptions());
 
     // The default error handler.
     const defaultErrorHandler: ErrorHandler = client.createDefaultErrorHandler();
@@ -407,8 +408,7 @@ export namespace ESLintClient {
 
     return [client, acknowledgePerformanceStatus];
 
-    function createServerOptions(extensionUri: Uri): ServerOptions {
-      const serverModule = path.join(extensionUri.fsPath, 'lib/server.js')
+    function createServerOptions(serverModule: string): ServerOptions {
       const eslintConfig = Workspace.getConfiguration('eslint');
       const debug = sanitize(eslintConfig.get<boolean>('debug', false) ?? false, 'boolean', false);
       const runtime = sanitize(eslintConfig.get<string | null>('runtime', null) ?? undefined, 'string', undefined);
