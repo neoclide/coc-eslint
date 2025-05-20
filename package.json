@@ -170,6 +170,7 @@
           "scope": "resource",
           "type": "boolean",
           "default": false,
+          "deprecationMessage": "Not used any more, use \"editor.codeActionsOnSave\" instead, use `CocCommand eslint.migrateSettings` to fix it.",
           "description": "Turns auto fix on save on or off."
         },
         "eslint.quiet": {
