@@ -2,6 +2,10 @@ import { commands, Disposable, disposeAll, Location, StatusBarItem, Task, TaskOp
 import path from 'path'
 import { findEslint } from './utils'
 
+export async function resolveLintCommand(root: string, command: string | null | undefined): Promise<string> {
+  return typeof command === 'string' && command.length > 0 ? command : findEslint(root)
+}
+
 const errorRegex = /^(.+):(\d+):(\d+):\s*(.+?)\s\[(\w+)\/?(.*)\]/
 
 interface ErrorItem {
@@ -22,7 +26,7 @@ export default class EslintTask implements Disposable {
     let cwd: string
     this.disposables.push(commands.registerCommand(EslintTask.id, async () => {
       let opts = await this.getOptions()
-      cwd = await workspace.nvim.call('getcwd')
+      cwd = await workspace.nvim.call('getcwd') as string
       let started = await this.start(opts)
       if (started) {
         this.statusItem.text = 'Eslint running'
@@ -100,8 +104,8 @@ export default class EslintTask implements Disposable {
     let folders = workspace.workspaceFolders
     if (folders.length === 0) return
     let root = Uri.parse(folders[0].uri).fsPath
-    let cmd = await findEslint(root)
     let config = workspace.getConfiguration('eslint', folders[0])
+    let cmd = await resolveLintCommand(root, config.get<string | null>('lintTask.command', null))
     let args = config.get<string[]>('lintTask.options', ['.'])
     return {
       cmd,

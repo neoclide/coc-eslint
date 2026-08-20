@@ -64,9 +64,16 @@ export namespace CodeActionsOnSaveRules {
   }
 }
 
+export namespace CodeActionsOnSaveOptions {
+  export function from(value: ESLintOptions | undefined | null): ESLintOptions | undefined {
+    return value !== null && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+  }
+}
+
 export type CodeActionsOnSaveSettings = {
   mode: CodeActionsOnSaveMode;
   rules?: string[];
+  options?: ESLintOptions;
 };
 
 export enum ESLintSeverity {
@@ -158,6 +165,7 @@ export type ConfigurationSettings = {
   packageManager: PackageManagers;
   useESLintClass: boolean;
   useFlatConfig?: boolean | undefined;
+  useRealpaths: boolean;
   experimental?: {
     useFlatConfig: boolean;
   };
@@ -165,6 +173,11 @@ export type ConfigurationSettings = {
   codeActionOnSave: CodeActionsOnSaveSettings;
   format: boolean;
   quiet: boolean;
+  bulkSuppression: {
+    enable: boolean;
+    location?: string;
+    severity: 'error' | 'warn' | 'info' | 'hint';
+  };
   onIgnoredFiles: ESLintSeverity;
   options: ESLintOptions | undefined;
   rulesCustomizations: RuleCustomization[];

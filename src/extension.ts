@@ -6,6 +6,7 @@
 import {
   commands as Commands, Disposable, ExtensionContext,
   LanguageClient,
+  State,
   TextDocument,
   Uri,
   window as Window,
@@ -140,8 +141,17 @@ function realActivate(context: ExtensionContext): void {
     Commands.registerCommand('eslint.migrateSettings', () => {
       void ESLintClient.migrateSettings(client);
     }),
-    Commands.registerCommand('eslint.restart', () => {
-      client.restart().catch((error) => client.error(`Restarting client failed`, error, 'force'));
+    Commands.registerCommand('eslint.restart', async () => {
+      if (client.state === State.StartFailed) {
+        await client.dispose();
+        [client, acknowledgePerformanceStatus] = ESLintClient.create(context, validator);
+        return client.start().then(() => {
+          client.info('ESLint server restarted.');
+        }).catch((error) => client.error('Starting the server failed.', error, 'force'));
+      }
+      return client.restart().then(() => {
+        client.info('ESLint server restarted.');
+      }).catch((error) => client.error('Restarting client failed', error, 'force'));
     }),
     Commands.registerCommand('eslint.revalidate', () => {
       let feature = client.getFeature('textDocument/diagnostic')

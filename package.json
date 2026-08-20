@@ -1,6 +1,6 @@
 {
   "name": "coc-eslint",
-  "version": "3.0.15",
+  "version": "3.1.0",
   "description": "Eslint extension for coc.nvim",
   "main": "lib/index.js",
   "publisher": "chemzqm",
@@ -18,7 +18,14 @@
   "scripts": {
     "clean": "rimraf lib",
     "build": "node esbuild.js",
-    "prepare": "node esbuild.js"
+    "prepare": "node esbuild.js",
+    "test": "npm run test:integration:nvim && npm run test:integration:vim",
+    "test:integration": "coc-test \"test/**/*.test.ts\"",
+    "test:integration:nvim": "coc-test --nvim \"test/**/*.test.ts\"",
+    "test:integration:vim": "coc-test --vim \"test/**/*.test.ts\""
+  },
+  "coc-test": {
+    "entryFile": "src/extension.ts"
   },
   "activationEvents": [
     "*"
@@ -177,7 +184,30 @@
           "scope": "resource",
           "type": "boolean",
           "default": false,
-          "description": "Turns on quiet mode, which ignores warnings."
+          "description": "Turns on quiet mode, which ignores warnings and info diagnostics."
+        },
+        "eslint.bulkSuppression.enable": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": false,
+          "description": "Show file-level bulk-suppressed violations. Requires ESLint 10.1 or later."
+        },
+        "eslint.bulkSuppression.location": {
+          "type": "string",
+          "scope": "resource",
+          "description": "Path to the suppressions file relative to the workspace."
+        },
+        "eslint.bulkSuppression.severity": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "hint"
+          ],
+          "default": "info",
+          "description": "Diagnostic severity for bulk-suppressed violations."
         },
         "eslint.onIgnoredFiles": {
           "scope": "resource",
@@ -199,7 +229,14 @@
           "scope": "resource",
           "type": "boolean",
           "default": false,
+          "deprecationMessage": "Use ESLint version 8.57 or later and eslint.useFlatConfig instead.",
           "description": "Enables support of experimental Flat Config (aka eslint.config.js, supported by ESLint version 8.21 or later)."
+        },
+        "eslint.useRealpaths": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Whether ESLint should use real paths when resolving files. This is useful when working with symlinks or when the casing of file paths is inconsistent."
         },
         "eslint.workingDirectories": {
           "scope": "resource",
@@ -304,12 +341,17 @@
             "javascriptreact",
             "typescript",
             "typescriptreact",
+            "css",
+            "glimmer-js",
+            "glimmer-ts",
             "html",
             "mdx",
+            "svelte",
             "vue",
             "markdown",
             "json",
-            "jsonc"
+            "jsonc",
+            "graphql"
           ],
           "description": "An array of language ids for which the extension should probe if support is installed."
         },
@@ -401,6 +443,12 @@
           "default": null,
           "markdownDescription": "The rules that should be executed when computing the code actions on save or formatting a file. Defaults to the rules configured via the ESLint configuration"
         },
+        "eslint.codeActionsOnSave.options": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "markdownDescription": "The ESLint options object to use on save. Rules configured with eslint.codeActionsOnSave.rules take priority."
+        },
         "eslint.format.enable": {
           "scope": "resource",
           "type": "boolean",
@@ -442,6 +490,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "eslint.lintTask.command": {
+          "scope": "resource",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The command used to lint the whole workspace. When unset, coc-eslint detects the workspace ESLint executable."
         },
         "eslint.problems.shortenToSingleLine": {
           "type": "boolean",
@@ -540,16 +597,25 @@
   "author": "chemzqm@gmail.com",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^16.18",
+    "@types/node": "^22.19",
     "@types/semver": "^7.5.8",
-    "coc.nvim": "^0.0.83-next.22",
+    "coc.nvim": "^0.0.83-next.26",
     "semver": "^7.6.0",
-    "esbuild": "^0.25.0",
-    "typescript": "^5.3.3",
+    "esbuild": "^0.28.2",
+    "coc-test": "^0.1.6",
+    "typescript": "^6.0.3",
     "vscode-languageserver": "10.0.0-next.10",
     "vscode-languageserver-textdocument": "1.0.11",
     "vscode-languageserver-protocol": "3.17.5",
     "vscode-uri": "^3.0.8"
   },
-  "dependencies": {}
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/neoclide/coc-eslint/issues"
+  },
+  "homepage": "https://github.com/neoclide/coc-eslint#readme"
 }

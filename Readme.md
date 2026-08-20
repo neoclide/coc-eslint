@@ -77,14 +77,18 @@ export default [
 - `eslint.run`: Run the linter on save (onSave) or on type (onType)  Default: `"onType"`
     Valid options: ["onSave","onType"]
 - `eslint.autoFixOnSave`: Turns auto fix on save on or off.  Default: `false`
-- `eslint.quiet`: Turns on quiet mode, which ignores warnings.  Default: `false`
+- `eslint.quiet`: Turns on quiet mode, which ignores warnings and info diagnostics.  Default: `false`
+- `eslint.bulkSuppression.enable`: Show file-level bulk-suppressed violations. Requires ESLint 10.1 or later.  Default: `false`
+- `eslint.bulkSuppression.location`: Path to the suppressions file relative to the workspace.
+- `eslint.bulkSuppression.severity`: Diagnostic severity for bulk-suppressed violations.  Default: `"info"`
 - `eslint.onIgnoredFiles`: Whether ESLint should issue a warning on ignored files.  Default: `"off"`
     Valid options: ["warn","off"]
 - `eslint.useESLintClass`: Since version 7 ESLint offers a new API call ESLint. Use it even if the old CLIEngine is available. From version 8 on forward on ESLint class is available.  Default: `false`
 - `eslint.experimental.useFlatConfig`: Enables support of experimental Flat Config (aka eslint.config.js, supported by ESLint version 8.21 or later).  Default: `false`
+- `eslint.useRealpaths`: Whether ESLint should use real paths when resolving files. This is useful when working with symlinks or when the casing of file paths is inconsistent.  Default: `false`
 - `eslint.workingDirectories`: Specifies how the working directories ESLint is using are computed. ESLint resolves configuration files (e.g. `eslintrc`, `.eslintignore`) relative to a working directory so it is important to configure this correctly.
 - `eslint.validate`: An array of language ids which should be validated by ESLint. If not installed ESLint will show an error.
-- `eslint.probe`: An array of language ids for which the extension should probe if support is installed.  Default: `["javascript","javascriptreact","typescript","typescriptreact","html","vue","markdown"]`
+- `eslint.probe`: An array of language ids for which the extension should probe if support is installed.  Default: `["astro","civet","javascript","javascriptreact","typescript","typescriptreact","css","glimmer-js","glimmer-ts","html","mdx","svelte","vue","markdown","json","jsonc","graphql"]`
 - `eslint.runtime`: The location of the node binary to run ESLint under.  Default: `null`
 - `eslint.debug`: Enables ESLint debug mode (same as `--debug` on the command line)  Default: `false`
 - `eslint.execArgv`: Additional exec argv argument passed to the runtime. This can for example be used to control the maximum heap space using --max_old_space_size  Default: `null`
@@ -93,9 +97,11 @@ export default [
 - `eslint.codeActionsOnSave.mode`: Specifies the code action mode. Possible values are 'all' and 'problems'.  Default: `"all"`
     Valid options: ["all","problems"]
 - `eslint.codeActionsOnSave.rules`: The rules that should be executed when computing the code actions on save or formatting a file. Defaults to the rules configured via the ESLint configuration  Default: `null`
+- `eslint.codeActionsOnSave.options`: The ESLint options object to use on save. Rules configured with `eslint.codeActionsOnSave.rules` take priority.  Default: `{}`
 - `eslint.format.enable`: Enables ESLint as a formatter.  Default: `false`
 - `eslint.rules.customizations`: Override the severity of one or more rules reported by this extension, regardless of the project's ESLint config. Use globs to apply default severities for multiple rules.
 - `eslint.lintTask.options`: Command line options applied when running the task for linting the whole workspace (see https://eslint.org/docs/user-guide/command-line-interface).  Default: `["."]`
+- `eslint.lintTask.command`: The command used to lint the whole workspace. When unset, coc-eslint detects the workspace ESLint executable.  Default: `null`
 - `eslint.problems.shortenToSingleLine`: Shortens the text spans of underlined problems to their first related line.  Default: `false`
 - `eslint.migration.2_x`: Whether ESlint should migrate auto fix on save settings.  Default: `"on"`
     Valid options: ["off","on"]

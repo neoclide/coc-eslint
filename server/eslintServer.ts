@@ -21,7 +21,7 @@ import {
 import { Validate, CodeActionsOnSaveMode } from './shared/settings';
 
 import {
-	CodeActions, ConfigData, ESLint, FixableProblem, Fixes, Problem, RuleMetaData, RuleSeverities,
+	CodeActions, ESLint, ESLintClassOptions, FixableProblem, Fixes, Problem, RuleMetaData, RuleSeverities,
 	SaveRuleConfigs, SuggestionsProblem, TextDocumentSettings,
 } from './eslint';
 
@@ -116,20 +116,20 @@ process.on('uncaughtException', (error: any) => {
  * cell document it uses the file path from the notebook with a corresponding
  * extension (e.g. TypeScript -> ts)
  */
-function inferFilePath(documentOrUri: string | TextDocument | URI | undefined): string | undefined {
+function inferFilePath(documentOrUri: string | TextDocument | URI | undefined, useRealpaths: boolean): string | undefined {
 	if (!documentOrUri) {
 		return undefined;
 	}
 	const uri = getUri(documentOrUri);
 	if (uri.scheme === 'file') {
-		return getFileSystemPath(uri);
+		return getFileSystemPath(uri, useRealpaths);
 	}
 
 	const notebookDocument = notebooks.findNotebookDocumentForCell(uri.toString());
 	if (notebookDocument !== undefined ) {
 		const notebookUri = URI.parse(notebookDocument.uri);
 		if (notebookUri.scheme === 'file') {
-			const filePath = getFileSystemPath(uri);
+			const filePath = getFileSystemPath(uri, useRealpaths);
 			if (filePath !== undefined) {
 				const textDocument = documents.get(uri.toString());
 				if (textDocument !== undefined) {
@@ -299,7 +299,7 @@ connection.onDidChangeWatchedFiles(async (params) => {
 	SaveRuleConfigs.clear();
 
 	await Promise.all(params.changes.map(async (change) => {
-		const fsPath = inferFilePath(change.uri);
+		const fsPath = inferFilePath(change.uri, false);
 		if (fsPath === undefined || fsPath.length === 0 || isUNC(fsPath)) {
 			return;
 		}
@@ -756,7 +756,7 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
 	if (settings.validate !== Validate.on || !TextDocumentSettings.hasLibrary(settings) || (mode === AllFixesMode.format && !settings.format)) {
 		return [];
 	}
-	const filePath = inferFilePath(textDocument);
+	const filePath = inferFilePath(textDocument, settings.useRealpaths);
 	const problems = CodeActions.get(uri);
 	const originalContent = textDocument.getText();
 	let start = Date.now();
@@ -771,11 +771,18 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
 	} else {
 		const saveConfig = filePath !== undefined && mode === AllFixesMode.onSave ? await SaveRuleConfigs.get(uri, settings) : undefined;
 		const offRules = saveConfig?.offRules;
-		let overrideConfig: Required<ConfigData> | undefined;
-		if (offRules !== undefined) {
-			overrideConfig = { rules: Object.create(null) };
-			for (const ruleId of offRules) {
-				overrideConfig.rules[ruleId] = 'off';
+		const overrideOptions = saveConfig?.options;
+		let eslintOptions: ESLintClassOptions = { fix: true };
+		if (offRules !== undefined || overrideOptions !== undefined) {
+			if (overrideOptions !== undefined) {
+				eslintOptions = { ...eslintOptions, ...overrideOptions };
+			}
+			if (offRules !== undefined && offRules.size > 0) {
+				const overrideConfig = { rules: Object.create(null) };
+				for (const ruleId of offRules) {
+					overrideConfig.rules[ruleId] = 'off';
+				}
+				eslintOptions.overrideConfig = overrideConfig;
 			}
 		}
 		return ESLint.withClass(async (eslintClass) => {
@@ -800,7 +807,7 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
 				}
 			}
 			return result;
-		}, settings, overrideConfig !== undefined ? { fix: true, overrideConfig } : { fix: true });
+		}, settings, eslintOptions);
 	}
 }
 

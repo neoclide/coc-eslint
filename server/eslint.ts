@@ -81,11 +81,16 @@ type ESLintProblem = {
 	suggestions?: ESLintSuggestionResult[];
 };
 
+type SuppressedESLintProblem = ESLintProblem & {
+	suppressions: Array<{ kind: string; justification: string }>;
+};
+
 type ESLintDocumentReport = {
 	filePath: string;
 	errorCount: number;
 	warningCount: number;
 	messages: ESLintProblem[];
+	suppressedMessages?: SuppressedESLintProblem[];
 	output?: string;
 };
 
@@ -115,6 +120,8 @@ export type ESLintClassOptions = {
 	fix?: boolean;
 	overrideConfig?: ConfigData;
 	overrideConfigFile?: string | null;
+	applySuppressions?: boolean;
+	suppressionsLocation?: string;
 };
 
 export type RuleMetaData = {
@@ -471,18 +478,18 @@ export class Fixes {
 	}
 }
 
-export type SaveRuleConfigItem = { offRules: Set<string>; onRules: Set<string>};
+export type SaveRuleConfigItem = { offRules: Set<string>; onRules: Set<string>; options: ESLintOptions | undefined};
 
 /**
  * Manages the special save rule configurations done in the VS Code settings.
  */
 export namespace SaveRuleConfigs {
 
-	export let inferFilePath: (documentOrUri: string | TextDocument | URI | undefined) => string | undefined;
+	export let inferFilePath: (documentOrUri: string | TextDocument | URI | undefined, useRealpaths: boolean) => string | undefined;
 
 	const saveRuleConfigCache = new LRUCache<string, SaveRuleConfigItem | null>(128);
 	export async function get(uri: string, settings: TextDocumentSettings  & { library: ESLintModule }): Promise<SaveRuleConfigItem | undefined> {
-		const filePath = inferFilePath(uri);
+		const filePath = inferFilePath(uri, settings.useRealpaths);
 		let result = saveRuleConfigCache.get(uri);
 		if (filePath === undefined || result === null) {
 			return undefined;
@@ -491,8 +498,9 @@ export namespace SaveRuleConfigs {
 			return result;
 		}
 		const rules = settings.codeActionOnSave.rules;
+		const options = settings.codeActionOnSave.options;
 		result = await ESLint.withClass(async (eslint) => {
-			if (rules === undefined || eslint.isCLIEngine) {
+			if ((rules === undefined && options === undefined) || eslint.isCLIEngine) {
 				return undefined;
 			}
 			const config = await eslint.calculateConfigForFile(filePath);
@@ -501,18 +509,20 @@ export namespace SaveRuleConfigs {
 			}
 			const offRules: Set<string> = new Set();
 			const onRules: Set<string> = new Set();
-			if (rules.length === 0) {
-				Object.keys(config.rules).forEach(ruleId => offRules.add(ruleId));
-			} else {
-				for (const ruleId of Object.keys(config.rules)) {
-					if (isOff(ruleId, rules)) {
-						offRules.add(ruleId);
-					} else {
-						onRules.add(ruleId);
+			if (rules !== undefined) {
+				if (rules.length === 0) {
+					Object.keys(config.rules).forEach(ruleId => offRules.add(ruleId));
+				} else {
+					for (const ruleId of Object.keys(config.rules)) {
+						if (isOff(ruleId, rules)) {
+							offRules.add(ruleId);
+						} else {
+							onRules.add(ruleId);
+						}
 					}
 				}
 			}
-			return offRules.size > 0 ? { offRules, onRules } : undefined;
+			return (offRules.size > 0 || options) ? { offRules, onRules, options } : undefined;
 		}, settings);
 		if (result === undefined || result === null) {
 			saveRuleConfigCache.set(uri, null);
@@ -591,7 +601,24 @@ export namespace RuleSeverities {
 /**
  * Creates LSP Diagnostics and captures code action information.
  */
-namespace Diagnostics {
+export namespace Diagnostics {
+
+	const unnecessaryRuleNames = new Set<string>([
+		'no-unused-imports',
+		'no-unused-private-class-members',
+		'no-unused-vars'
+	]);
+
+	function getRuleName(ruleId: string): string {
+		return ruleId.substring(ruleId.lastIndexOf('/') + 1);
+	}
+
+	export function isUnnecessary(problem: Pick<ESLintProblem, 'message'> & { ruleId?: string }): boolean {
+		if (typeof problem.ruleId === 'string' && unnecessaryRuleNames.has(getRuleName(problem.ruleId))) {
+			return true;
+		}
+		return /\b(?:defined|assigned)\b.+\bnever used\b/i.test(problem.message);
+	}
 
 	export function computeKey(diagnostic: Diagnostic): string {
 		const range = diagnostic.range;
@@ -643,9 +670,9 @@ namespace Diagnostics {
 					href: url
 				};
 			}
-			if (problem.ruleId === 'no-unused-vars') {
-				result.tags = [DiagnosticTag.Unnecessary];
-			}
+		}
+		if (isUnnecessary(problem)) {
+			result.tags = [DiagnosticTag.Unnecessary];
 		}
 
 		return [result, override];
@@ -752,7 +779,7 @@ export namespace ESLint {
 
 	let connection: ProposedFeatures.Connection;
 	let documents: TextDocuments<TextDocument>;
-	let inferFilePath: (documentOrUri: string | TextDocument | URI | undefined) => string | undefined;
+	let inferFilePath: (documentOrUri: string | TextDocument | URI | undefined, useRealpaths: boolean) => string | undefined;
 	let loadNodeModule: <T>(moduleName: string) => T | undefined;
 
 	const languageId2ParserRegExp: Map<string, RegExp[]> = function createLanguageId2ParserRegExp() {
@@ -786,7 +813,12 @@ export namespace ESLint {
 		['jsonc', 'jsonc'],
 		['mdx', 'mdx'],
 		['vue', 'vue'],
-		['markdown', 'markdown']
+		['markdown', 'markdown'],
+		['css', 'css'],
+		['glimmer-js', 'ember'],
+		['glimmer-ts', 'ember'],
+		['svelte', 'svelte'],
+		['graphql', '@graphql-eslint']
 	]);
 
 	const defaultLanguageIds: Set<string> = new Set([
@@ -817,7 +849,7 @@ export namespace ESLint {
 	const document2Settings: Map<string, Promise<TextDocumentSettings>> = new Map<string, Promise<TextDocumentSettings>>();
 	const formatterRegistrations: Map<string, Promise<Disposable>> = new Map();
 
-	export function initialize($connection: ProposedFeatures.Connection, $documents: TextDocuments<TextDocument>, $inferFilePath: (documentOrUri: string | TextDocument | URI | undefined) => string | undefined, $loadNodeModule: <T>(moduleName: string) => T | undefined) {
+	export function initialize($connection: ProposedFeatures.Connection, $documents: TextDocuments<TextDocument>, $inferFilePath: (documentOrUri: string | TextDocument | URI | undefined, useRealpaths: boolean) => string | undefined, $loadNodeModule: <T>(moduleName: string) => T | undefined) {
 		connection = $connection;
 		documents = $documents;
 		inferFilePath = $inferFilePath;
@@ -853,10 +885,10 @@ export namespace ESLint {
 		if (resultPromise) {
 			return resultPromise;
 		}
-		resultPromise = connection.workspace.getConfiguration({ scopeUri: uri, section: '' }).then((configuration: ConfigurationSettings) => {
+	resultPromise = connection.workspace.getConfiguration({ scopeUri: uri, section: '' }).then((configuration: ConfigurationSettings | null | undefined) => {
 			const settings: TextDocumentSettings = Object.assign(
 				{},
-				configuration,
+				configuration ?? { validate: Validate.off },
 				{ silent: false, library: undefined, resolvedGlobalPackageManagerPath: undefined },
 				{ workingDirectory: undefined}
 			);
@@ -864,11 +896,11 @@ export namespace ESLint {
 				return settings;
 			}
 			settings.resolvedGlobalPackageManagerPath = GlobalPaths.get(settings.packageManager);
-			const filePath = inferFilePath(document);
-			const workspaceFolderPath = settings.workspaceFolder !== undefined ? inferFilePath(settings.workspaceFolder.uri) : undefined;
+			const filePath = inferFilePath(document, settings.useRealpaths);
+			const workspaceFolderPath = settings.workspaceFolder !== undefined ? inferFilePath(settings.workspaceFolder.uri, settings.useRealpaths) : undefined;
 			let assumeFlatConfig:boolean = false;
-			const hasUserDefinedWorkingDirectories: boolean = configuration.workingDirectory !== undefined;
-			const workingDirectoryConfig = configuration.workingDirectory ?? { mode: ModeEnum.location };
+			const hasUserDefinedWorkingDirectories: boolean = configuration?.workingDirectory !== undefined;
+			const workingDirectoryConfig = configuration?.workingDirectory ?? { mode: ModeEnum.location };
 			if (ModeItem.is(workingDirectoryConfig)) {
 				let candidate: string | undefined;
 				if (workingDirectoryConfig.mode === ModeEnum.location) {
@@ -968,10 +1000,14 @@ export namespace ESLint {
 					if (library !== undefined && ESLintModule.hasESLintClass(library) && typeof library.ESLint.version === 'string') {
 						const esLintVersion = semverParse(library.ESLint.version);
 						if (esLintVersion !== null) {
-							if (semverGte(esLintVersion, '8.57.0') && settings.experimental?.useFlatConfig === true) {
+							if (semverGte(esLintVersion, '10.0.0') &&
+								(typeof settings.experimental?.useFlatConfig !== 'undefined' || typeof settings.useFlatConfig !== 'undefined')) {
+								connection.console.info(`ESLint version ${library.ESLint.version} only supports flat configs. The useFlatConfig setting is ignored.`);
+							} else if (semverGte(esLintVersion, '8.57.0') && settings.experimental?.useFlatConfig === true) {
 								connection.console.info(`ESLint version ${library.ESLint.version} supports flat config without experimental opt-in. The 'eslint.experimental.useFlatConfig' setting can be removed.`);
-							} else if (semverGte(esLintVersion, '10.0.0') && (settings.experimental?.useFlatConfig === false || settings.useFlatConfig === false)) {
-								connection.console.info(`ESLint version ${library.ESLint.version} only supports flat configs. Setting is ignored.`);
+							}
+							if (settings.bulkSuppression?.enable && !semverGte(esLintVersion, '10.1.0')) {
+								connection.console.warn(`ESLint version ${library.ESLint.version} does not support bulk suppressions via the Node.js API. Upgrade to ESLint >= 10.1 or disable 'eslint.bulkSuppression.enable'.`);
 							}
 						}
 					}
@@ -1091,7 +1127,7 @@ export namespace ESLint {
 						if (!isFile) {
 							formatterRegistrations.set(uri, connection.client.register(DocumentFormattingRequest.type, options));
 						} else {
-							const filePath = inferFilePath(uri)!;
+							const filePath = inferFilePath(uri, settings.useRealpaths)!;
 							await ESLint.withClass(async (eslintClass) => {
 								if (!await eslintClass.isPathIgnored(filePath)) {
 									formatterRegistrations.set(uri, connection.client.register(DocumentFormattingRequest.type, options));
@@ -1177,14 +1213,23 @@ export namespace ESLint {
 		if (uri.scheme !== 'file') {
 			if (settings.workspaceFolder !== undefined) {
 				const ext = LanguageDefaults.getExtension(document.languageId);
-				const workspacePath = inferFilePath(settings.workspaceFolder.uri);
+				const workspacePath = inferFilePath(settings.workspaceFolder.uri, settings.useRealpaths);
 				if (workspacePath !== undefined && ext !== undefined) {
 					return path.join(workspacePath, `test.${ext}`);
 				}
 			}
 			return undefined;
 		} else {
-			return inferFilePath(uri);
+			return inferFilePath(uri, settings.useRealpaths);
+		}
+	}
+
+	function bulkSeverity(severity: 'error' | 'warn' | 'info' | 'hint'): DiagnosticSeverity {
+		switch (severity) {
+			case 'error': return DiagnosticSeverity.Error;
+			case 'warn': return DiagnosticSeverity.Warning;
+			case 'hint': return DiagnosticSeverity.Hint;
+			default: return DiagnosticSeverity.Information;
 		}
 	}
 
@@ -1207,6 +1252,12 @@ export namespace ESLint {
 		const content = document.getText();
 		const uri = document.uri;
 		const file = getFilePath(document, settings);
+		const suppressionOptions: ESLintClassOptions = settings.bulkSuppression.enable
+			? {
+				applySuppressions: true,
+				...(settings.bulkSuppression.location ? { suppressionsLocation: settings.bulkSuppression.location } : {})
+			}
+			: {};
 
 		return withClass(async (eslintClass) => {
 			CodeActions.remove(uri);
@@ -1219,7 +1270,7 @@ export namespace ESLint {
 					docReport.messages.forEach((problem) => {
 						if (problem) {
 							const [diagnostic, override] = Diagnostics.create(settings, problem, document);
-							if (!(override === RuleSeverity.off || (settings.quiet && diagnostic.severity === DiagnosticSeverity.Warning))) {
+							if (!(override === RuleSeverity.off || (settings.quiet && (diagnostic.severity === DiagnosticSeverity.Warning || diagnostic.severity === DiagnosticSeverity.Information)))) {
 								diagnostics.push(diagnostic);
 							}
 							if (fixTypes !== undefined && problem.ruleId !== undefined && problem.fix !== undefined) {
@@ -1237,9 +1288,20 @@ export namespace ESLint {
 						}
 					});
 				}
+				if (settings.bulkSuppression.enable && Array.isArray(docReport.suppressedMessages)) {
+					for (const problem of docReport.suppressedMessages) {
+						if (problem?.suppressions.some(item => item.kind === 'file')) {
+							const [diagnostic, override] = Diagnostics.create(settings, problem, document);
+							if (override !== RuleSeverity.off) {
+								diagnostic.severity = bulkSeverity(settings.bulkSuppression.severity);
+								diagnostics.push(diagnostic);
+							}
+						}
+					}
+				}
 			}
 			return diagnostics;
-		}, settings);
+		}, settings, suppressionOptions);
 	}
 
 	function trace(message: string, verbose?: string): void {
@@ -1412,14 +1474,14 @@ export namespace ESLint {
 			missingModuleReported.clear();
 		}
 
-		function tryHandleMissingModule(error: any, document: TextDocument, library: ESLintModule): Status | undefined {
+		function tryHandleMissingModule(error: any, document: TextDocument, library: ESLintModule, settings: TextDocumentSettings): Status | undefined {
 			if (!error.message) {
 				return undefined;
 			}
 
 			function handleMissingModule(plugin: string, module: string, error: ESLintError): Status {
 				if (!missingModuleReported.has(plugin)) {
-					const fsPath = inferFilePath(document);
+					const fsPath = inferFilePath(document, settings.useRealpaths);
 					missingModuleReported.set(plugin, library);
 					if (error.messageTemplate === 'plugin-missing') {
 						connection.console.error([

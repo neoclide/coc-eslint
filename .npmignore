@@ -3,3 +3,7 @@ tsconfig.json
 server
 *.map
 yarn.lock
+test
+.codex
+AGENTS.md
+.github/workflows

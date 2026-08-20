@@ -14,6 +14,7 @@
     "target": "es2018",
     "module": "commonjs",
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "lib": ["es2017", "es2018", "es2019", "es2020", "es2021"],
     "declaration": false,
