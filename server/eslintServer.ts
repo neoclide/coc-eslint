@@ -28,6 +28,7 @@ import {
 import { getFileSystemPath, getUri, isUNC } from './paths';
 import { stringDiff } from './diff';
 import LanguageDefaults from './languageDefaults';
+import { Changes, getCommandParams, isCachedCommand } from './codeActionChanges';
 
 // The connection to use. Code action requests get removed from the queue if
 // canceled.
@@ -387,42 +388,6 @@ class CodeActionResult {
 	}
 }
 
-class Changes {
-
-	private readonly values: Map<string, WorkspaceChange>;
-	private uri: string | undefined;
-	private version: number | undefined;
-
-	constructor() {
-		this.values = new Map();
-		this.uri = undefined;
-		this.version = undefined;
-	}
-
-	public clear(textDocument?: TextDocument): void {
-		if (textDocument === undefined) {
-			this.uri = undefined;
-			this.version = undefined;
-		} else {
-			this.uri = textDocument.uri;
-			this.version = textDocument.version;
-		}
-		this.values.clear();
-	}
-
-	public isUsable(uri: string, version: number): boolean {
-		return this.uri === uri && this.version === version;
-	}
-
-	public set(key: string, change: WorkspaceChange): void {
-		this.values.set(key, change);
-	}
-
-	public get(key: string): WorkspaceChange | undefined {
-		return this.values.get(key);
-	}
-}
-
 interface CommandParams extends VersionedTextDocumentIdentifier {
 	version: number;
 	ruleId?: string;
@@ -446,9 +411,10 @@ connection.onCodeAction(async (params) => {
 	const uri = params.textDocument.uri;
 	const textDocument = documents.get(uri);
 	if (textDocument === undefined) {
-		changes.clear(textDocument);
+		changes.clear();
 		return result.all();
 	}
+	changes.clear(textDocument);
 
 	function createCodeAction(title: string, kind: string, commandId: string, arg: CommandParams, diagnostic?: Diagnostic): CodeAction {
 		const command = Command.create(title, commandId, arg);
@@ -630,7 +596,7 @@ connection.onCodeAction(async (params) => {
 		if (Problem.isFixable(editInfo)) {
 			const workspaceChange = new WorkspaceChange();
 			workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(FixableProblem.createTextEdit(textDocument, editInfo));
-			changes.set(`${CommandIds.applySingleFix}:${ruleId}`, workspaceChange);
+			changes.set(changes.key(CommandIds.applySingleFix, CommandParams.create(textDocument, ruleId)), workspaceChange);
 			const action = createCodeAction(
 				editInfo.label,
 				kind,
@@ -645,7 +611,7 @@ connection.onCodeAction(async (params) => {
 			editInfo.suggestions.forEach((suggestion, suggestionSequence) => {
 				const workspaceChange = new WorkspaceChange();
 				workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(SuggestionsProblem.createTextEdit(textDocument, suggestion));
-				changes.set(`${CommandIds.applySuggestion}:${ruleId}:${suggestionSequence}`, workspaceChange);
+				changes.set(changes.key(CommandIds.applySuggestion, CommandParams.create(textDocument, ruleId, suggestionSequence)), workspaceChange);
 				const action = createCodeAction(
 					`${suggestion.desc} (${editInfo.ruleId})`,
 					CodeActionKind.QuickFix,
@@ -667,7 +633,7 @@ connection.onCodeAction(async (params) => {
 				const indentationText = matches !== null && matches.length > 0 ? matches[1] : '';
 				workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableLineTextEdit(textDocument, editInfo, indentationText));
 			}
-			changes.set(`${CommandIds.applyDisableLine}:${ruleId}`, workspaceChange);
+			changes.set(changes.key(CommandIds.applyDisableLine, CommandParams.create(textDocument, ruleId)), workspaceChange);
 			result.get(ruleId).disable = createCodeAction(
 				`Disable ${ruleId} for this line`,
 				kind,
@@ -678,7 +644,7 @@ connection.onCodeAction(async (params) => {
 			if (result.get(ruleId).disableFile === undefined) {
 				workspaceChange = new WorkspaceChange();
 				workspaceChange.getTextEditChange({ uri, version: documentVersion }).add(createDisableFileTextEdit(textDocument, editInfo));
-				changes.set(`${CommandIds.applyDisableFile}:${ruleId}`, workspaceChange);
+				changes.set(changes.key(CommandIds.applyDisableFile, CommandParams.create(textDocument, ruleId)), workspaceChange);
 				result.get(ruleId).disableFile = createCodeAction(
 					`Disable ${ruleId} for the entire file`,
 					kind,
@@ -719,12 +685,12 @@ connection.onCodeAction(async (params) => {
 				const sameFixes: WorkspaceChange = new WorkspaceChange();
 				const sameTextChange = sameFixes.getTextEditChange({ uri, version: documentVersion });
 				same.map(fix => FixableProblem.createTextEdit(textDocument, fix)).forEach(edit => sameTextChange.add(edit));
-				changes.set(CommandIds.applySameFixes, sameFixes);
+				changes.set(changes.key(CommandIds.applySameFixes, CommandParams.create(textDocument, ruleId)), sameFixes);
 				result.get(ruleId).fixAll = createCodeAction(
 					`Fix all ${ruleId} problems`,
 					kind,
 					CommandIds.applySameFixes,
-					CommandParams.create(textDocument)
+					CommandParams.create(textDocument, ruleId)
 				);
 			}
 		});
@@ -813,7 +779,13 @@ async function computeAllFixes(identifier: VersionedTextDocumentIdentifier, mode
 
 connection.onExecuteCommand(async (params) => {
 	let workspaceChange: WorkspaceChange | undefined;
-	const commandParams: CommandParams = params.arguments![0] as CommandParams;
+	const commandParams = getCommandParams(params.arguments) as CommandParams | undefined;
+	if (commandParams === undefined) {
+		return null;
+	}
+	if (isCachedCommand(params.command) && !changes.isUsable(commandParams.uri, commandParams.version)) {
+		return null;
+	}
 	if (params.command === CommandIds.applyAllFixes) {
 		const edits = await computeAllFixes(commandParams, AllFixesMode.command);
 		if (edits !== undefined && edits.length > 0) {
@@ -823,16 +795,16 @@ connection.onExecuteCommand(async (params) => {
 		}
 	} else {
 		if ([CommandIds.applySingleFix, CommandIds.applyDisableLine, CommandIds.applyDisableFile].indexOf(params.command) !== -1) {
-			workspaceChange = changes.get(`${params.command}:${commandParams.ruleId}`);
+			workspaceChange = changes.get(changes.key(params.command, commandParams));
 		} else if ([CommandIds.applySuggestion].indexOf(params.command) !== -1) {
-			workspaceChange = changes.get(`${params.command}:${commandParams.ruleId}:${commandParams.sequence}`);
+			workspaceChange = changes.get(changes.key(params.command, commandParams));
 		} else if (params.command === CommandIds.openRuleDoc && CommandParams.hasRuleId(commandParams)) {
 			const url = RuleMetaData.getUrl(commandParams.ruleId);
 			if (url) {
 				void connection.sendRequest(OpenESLintDocRequest.type, { url });
 			}
 		} else {
-			workspaceChange = changes.get(params.command);
+			workspaceChange = changes.get(changes.key(params.command, commandParams));
 		}
 	}
 

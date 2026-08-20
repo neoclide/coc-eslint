@@ -16,6 +16,7 @@ import {
   ConfigurationParams,
   ConfigurationTarget,
   Diagnostic,
+  Disposable,
   ErrorHandler,
   ExtensionContext,
   LanguageClient, LanguageClientOptions,
@@ -125,6 +126,13 @@ type NoESLintState = {
 
 export namespace ESLintClient {
 
+  let disposeActiveSession: (() => void) | undefined;
+
+  export function dispose(): void {
+    disposeActiveSession?.();
+    disposeActiveSession = undefined;
+  }
+
   function migrationFailed(client: LanguageClient, error: any): void {
     client.error(error.message ?? 'Unknown error', error);
     void Window.showErrorMessage('ESLint settings migration failed. Please see the ESLint output channel for further details', 'Open Channel').then((selected) => {
@@ -172,11 +180,16 @@ export namespace ESLintClient {
   };
 
   namespace PerformanceStatus {
-    export const defaultValue: PerformanceStatus = { firstReport: true, validationTime: 0, fixTime: 0, reported: 0, acknowledged: false };
+    export function create(): PerformanceStatus {
+      return { firstReport: true, validationTime: 0, fixTime: 0, reported: 0, acknowledged: false };
+    }
   }
 
   export function create(context: ExtensionContext, validator: Validator): [LanguageClient, () => void] {
-    const alwaysShow = Workspace.getConfiguration('eslint', null).inspect('alwaysShow').globalValue
+    disposeActiveSession?.();
+    disposeActiveSession = undefined;
+    const sessionDisposables: Disposable[] = [];
+    const alwaysShow = Workspace.getConfiguration('eslint', null).inspect('alwaysShowStatus').globalValue
 
     // Filters for client options
     const packageJsonFilter: VDocumentFilter = { scheme: 'file', pattern: '**/package.json' };
@@ -219,7 +232,7 @@ export namespace ESLintClient {
 
     // If the workspace configuration changes we need to update the synced documents since the
     // list of probe language type can change.
-    context.subscriptions.push(Workspace.onDidChangeConfiguration(() => {
+    sessionDisposables.push(Workspace.onDidChangeConfiguration(() => {
       validator.clear();
       for (const textDocument of syncedDocuments.values()) {
         if (validator.check(textDocument) === Validate.off) {
@@ -235,15 +248,15 @@ export namespace ESLintClient {
       }
     }));
 
-    client.onNotification(ShowOutputChannel.type, () => {
+    sessionDisposables.push(client.onNotification(ShowOutputChannel.type, () => {
       client.outputChannel.show();
-    });
+    }));
 
-    client.onNotification(StatusNotification.type, (params) => {
+    sessionDisposables.push(client.onNotification(StatusNotification.type, (params) => {
       updateDocumentStatus(params);
-    });
+    }));
 
-    client.onNotification(ExitCalled.type, (params) => {
+    sessionDisposables.push(client.onNotification(ExitCalled.type, (params) => {
       serverCalledProcessExit = true;
       client.error(`Server process exited with code ${params[0]}. This usually indicates a misconfigured ESLint setup.`, params[1]);
       void Window.showErrorMessage(`ESLint server shut itself down. See 'ESLint' output channel for details.`, { title: 'Open Output', id: 1 }).then((value) => {
@@ -251,9 +264,9 @@ export namespace ESLintClient {
           client.outputChannel.show();
         }
       });
-    });
+    }));
 
-    client.onRequest(NoConfigRequest.type, (params) => {
+    sessionDisposables.push(client.onRequest(NoConfigRequest.type, (params) => {
       const document = Uri.parse(params.document.uri);
       const workspaceFolder = Workspace.getWorkspaceFolder(document);
       const fileLocation = document.fsPath;
@@ -274,9 +287,9 @@ export namespace ESLintClient {
 
       updateDocumentStatus({ uri: params.document.uri, state: Status.error });
       return {};
-    });
+    }));
 
-    client.onRequest(NoESLintLibraryRequest.type, async (params) => {
+    sessionDisposables.push(client.onRequest(NoESLintLibraryRequest.type, async (params) => {
       const key = 'noESLintMessageShown';
       const state = context.globalState.get<NoESLintState>(key, {});
 
@@ -341,14 +354,14 @@ export namespace ESLintClient {
         }
       }
       return {};
-    });
+    }));
 
-    client.onRequest(OpenESLintDocRequest.type, async (params) => {
+    sessionDisposables.push(client.onRequest(OpenESLintDocRequest.type, async (params) => {
       await commands.executeCommand('vscode.open', Uri.parse(params.url));
       return {};
-    });
+    }));
 
-    client.onRequest(ProbeFailedRequest.type, (params) => {
+    sessionDisposables.push(client.onRequest(ProbeFailedRequest.type, (params) => {
       const uri = Uri.parse(params.textDocument.uri);
       validator.add(uri);
       const closeFeature = client.getFeature(DidCloseTextDocumentNotification.method);
@@ -360,23 +373,9 @@ export namespace ESLintClient {
           if (typeof provider['forget'] === 'function') provider.forget(document);
         }
       }
-    });
+    }));
 
-    client.onDidChangeState((event) => {
-      if (event.newState === State.Starting) {
-        client.info(starting);
-        serverRunning = undefined;
-      } else if (event.newState === State.Running) {
-        client.info(running);
-        serverRunning = true;
-      } else {
-        client.info(stopped);
-        serverRunning = false;
-      }
-      updateStatusBar(undefined);
-    });
-
-    context.subscriptions.push(
+    sessionDisposables.push(
       Window.onDidChangeActiveTextEditor(() => {
         updateStatusBar(undefined);
       }),
@@ -405,6 +404,29 @@ export namespace ESLintClient {
         });
       })
     );
+
+    sessionDisposables.push(client.onDidChangeState((event) => {
+      if (event.newState === State.Starting) {
+        client.info(starting);
+        serverRunning = undefined;
+      } else if (event.newState === State.Running) {
+        client.info(running);
+        serverRunning = true;
+      } else {
+        client.info(stopped);
+        serverRunning = false;
+      }
+      updateStatusBar(undefined);
+    }));
+
+    const session = Disposable.create(() => {
+      for (const disposable of sessionDisposables.splice(0)) {
+        disposable.dispose();
+      }
+      languageStatus.dispose();
+    });
+    context.subscriptions.push(session);
+    disposeActiveSession = () => session.dispose();
 
     return [client, acknowledgePerformanceStatus];
 
@@ -552,7 +574,7 @@ export namespace ESLintClient {
             if (only && only.startsWith('source.fixAll')) {
               let performanceInfo = performanceStatus.get(document.languageId);
               if (performanceInfo === undefined) {
-                performanceInfo = PerformanceStatus.defaultValue;
+                performanceInfo = PerformanceStatus.create();
                 performanceStatus.set(document.languageId, performanceInfo);
               } else {
                 performanceInfo.firstReport = false;
@@ -587,10 +609,17 @@ export namespace ESLintClient {
 
     async function getPackageManager(uri: Uri) {
       const userProvidedPackageManager: PackageManagers = Workspace.getConfiguration('eslint', uri).get('packageManager', 'npm');
-      const detectedPackageManager = await commands.executeCommand<PackageManagers>('npm.packageManager');
+      let detectedPackageManager: PackageManagers | undefined;
+      if (commands.has('npm.packageManager')) {
+        try {
+          detectedPackageManager = await commands.executeCommand<PackageManagers>('npm.packageManager');
+        } catch {
+          detectedPackageManager = undefined;
+        }
+      }
 
-      if (userProvidedPackageManager === detectedPackageManager) {
-        return detectedPackageManager;
+      if (detectedPackageManager === undefined || userProvidedPackageManager === detectedPackageManager) {
+        return userProvidedPackageManager;
       }
       client.warn(`Detected package manager(${detectedPackageManager}) differs from the one in the deprecated packageManager setting(${userProvidedPackageManager}). We will honor this setting until it is removed.`, {});
       return userProvidedPackageManager;
@@ -715,8 +744,9 @@ export namespace ESLintClient {
         const workingDirectories = config.get<(string | LegacyDirectoryItem | DirectoryItem | PatternItem | ModeItem)[] | undefined>('workingDirectories', undefined);
         if (Array.isArray(workingDirectories)) {
           let workingDirectory: ModeItem | DirectoryItem | undefined = undefined;
-          let uri = Uri.parse(workspaceFolder.uri)
-          const workspaceFolderPath = workspaceFolder && uri.scheme === 'file' ? uri.fsPath : undefined;
+          const workspaceFolderPath = workspaceFolder !== undefined && Uri.parse(workspaceFolder.uri).scheme === 'file'
+            ? Uri.parse(workspaceFolder.uri).fsPath
+            : undefined;
           for (const entry of workingDirectories) {
             let directory: string | undefined;
             let pattern: string | undefined;
@@ -842,7 +872,7 @@ export namespace ESLintClient {
       if (textDocument !== undefined) {
         let performanceInfo = performanceStatus.get(textDocument.languageId);
         if (performanceInfo === undefined) {
-          performanceInfo = PerformanceStatus.defaultValue;
+          performanceInfo = PerformanceStatus.create();
           performanceStatus.set(textDocument.languageId, performanceInfo);
         } else {
           performanceInfo.firstReport = false;
@@ -968,7 +998,7 @@ export namespace ESLintClient {
       if (performanceInfo !== undefined) {
         performanceInfo.reported = Math.max(performanceInfo.reported, timeTaken);
       }
-      languageStatus.text = serverRunning === undefined ? starting : text
+      languageStatus.text = serverRunning === undefined ? starting : (text || running)
       if (alwaysShow || statusInfo.state !== Status.ok) {
         languageStatus.show()
       } else {

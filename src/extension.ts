@@ -23,20 +23,23 @@ import { ESLintClient, Validator } from './client';
 import { findEslint } from './node-utils';
 import { pickFolder } from './vscode-utils';
 
+const eslintConfigFiles = [
+  '.eslintrc.js', '.eslintrc.cjs', '.eslintrc.yaml', '.eslintrc.yml', '.eslintrc', '.eslintrc.json',
+  'eslint.config.js', 'eslint.config.mjs', 'eslint.config.cjs', 'eslint.config.ts', 'eslint.config.mts', 'eslint.config.cts'
+];
+
+export function hasEslintConfig(root: string): boolean {
+  return eslintConfigFiles.some(configFile => fs.existsSync(path.join(root, configFile)));
+}
+
 function createDefaultConfiguration(): void {
   const folders = Workspace.workspaceFolders;
-  if (!folders) {
+  if (!folders || folders.length === 0) {
     void Window.showErrorMessage('An ESLint configuration can only be generated if VS Code is opened on a workspace folder.');
     return;
   }
   const noConfigFolders = folders.filter(folder => {
-    const configFiles = ['.eslintrc.js', '.eslintrc.cjs', '.eslintrc.yaml', '.eslintrc.yml', '.eslintrc', '.eslintrc.json'];
-    for (const configFile of configFiles) {
-      if (fs.existsSync(path.join(Uri.parse(folder.uri).fsPath, configFile))) {
-        return false;
-      }
-    }
-    return true;
+    return !hasEslintConfig(Uri.parse(folder.uri).fsPath);
   });
   if (noConfigFolders.length === 0) {
     if (folders.length === 1) {
@@ -62,6 +65,7 @@ function createDefaultConfiguration(): void {
 }
 
 let onActivateCommands: Disposable[] | undefined;
+let delayedActivationDisposables: Disposable[] | undefined;
 let client: LanguageClient;
 // const taskProvider: TaskProvider = new TaskProvider();
 const validator: Validator = new Validator();
@@ -75,6 +79,7 @@ export function activate(context: ExtensionContext) {
     if (validator.check(textDocument) !== Validate.off) {
       openListener.dispose();
       configurationListener.dispose();
+      delayedActivationDisposables = undefined;
       activated = true;
       realActivate(context);
     }
@@ -88,6 +93,7 @@ export function activate(context: ExtensionContext) {
       if (validator.check(textDocument) !== Validate.off) {
         openListener.dispose();
         configurationListener.dispose();
+        delayedActivationDisposables = undefined;
         activated = true;
         realActivate(context);
         return;
@@ -98,6 +104,8 @@ export function activate(context: ExtensionContext) {
   let activated: boolean = false;
   const openListener: Disposable = Workspace.onDidOpenTextDocument(didOpenTextDocument);
   const configurationListener: Disposable = Workspace.onDidChangeConfiguration(configurationChanged);
+  delayedActivationDisposables = [openListener, configurationListener];
+  context.subscriptions.push(openListener, configurationListener);
 
   const notValidating = () => {
     const enabled = Workspace.getConfiguration('eslint', Window.activeTextEditor?.document).get('enable', true);
@@ -169,8 +177,11 @@ function realActivate(context: ExtensionContext): void {
 }
 
 export function deactivate(): Promise<void> {
+  delayedActivationDisposables?.forEach(disposable => disposable.dispose());
+  delayedActivationDisposables = undefined;
   if (onActivateCommands !== undefined) {
     onActivateCommands.forEach(command => command.dispose());
   }
+  ESLintClient.dispose();
   return client !== undefined ? client.stop() : Promise.resolve();
 }

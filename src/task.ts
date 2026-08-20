@@ -1,4 +1,4 @@
-import { commands, Disposable, disposeAll, Location, StatusBarItem, Task, TaskOptions, Uri, window, workspace } from 'coc.nvim'
+import { commands, Disposable, disposeAll, StatusBarItem, Task, TaskOptions, Uri, window, workspace } from 'coc.nvim'
 import path from 'path'
 import { findEslint } from './utils'
 
@@ -6,12 +6,40 @@ export async function resolveLintCommand(root: string, command: string | null | 
   return typeof command === 'string' && command.length > 0 ? command : findEslint(root)
 }
 
-const errorRegex = /^(.+):(\d+):(\d+):\s*(.+?)\s\[(\w+)\/?(.*)\]/
-
-interface ErrorItem {
-  location: Location
+export interface LintQuickfixItem {
+  filename: string
+  lnum: number
+  col: number
   text: string
-  type: string
+  type: 'E' | 'W'
+}
+
+/** Convert ESLint's built-in JSON formatter output to Vim quickfix entries. */
+export function parseLintOutput(output: string, cwd?: string): LintQuickfixItem[] {
+  let reports: Array<{ filePath?: string; messages?: Array<{ line?: number; column?: number; message?: string; ruleId?: string; severity?: number }> }>
+  try {
+    const parsed = JSON.parse(output)
+    if (!Array.isArray(parsed)) return []
+    reports = parsed
+  } catch {
+    return []
+  }
+  const result: LintQuickfixItem[] = []
+  for (const report of reports) {
+    if (typeof report.filePath !== 'string' || !Array.isArray(report.messages)) continue
+    const filename = cwd ? path.relative(cwd, report.filePath) : report.filePath
+    for (const message of report.messages) {
+      if (typeof message.line !== 'number' || typeof message.column !== 'number' || typeof message.message !== 'string') continue
+      result.push({
+        filename,
+        lnum: message.line,
+        col: message.column,
+        text: `${message.message}${message.ruleId ? ` [${message.ruleId}]` : ''}`,
+        type: message.severity === 2 ? 'E' : 'W'
+      })
+    }
+  }
+  return result
 }
 
 export default class EslintTask implements Disposable {
@@ -24,8 +52,15 @@ export default class EslintTask implements Disposable {
     this.statusItem = window.createStatusBarItem(1, { progress: true })
     let task = this.task = workspace.createTask('ESLINT')
     let cwd: string
+    let stdout: string[] = []
     this.disposables.push(commands.registerCommand(EslintTask.id, async () => {
       let opts = await this.getOptions()
+      if (opts === undefined) {
+        void window.showWarningMessage('ESLint project linting requires an open workspace folder.')
+        return
+      }
+      stdout = []
+      lastline = ''
       cwd = await workspace.nvim.call('getcwd') as string
       let started = await this.start(opts)
       if (started) {
@@ -37,38 +72,27 @@ export default class EslintTask implements Disposable {
     }))
     let lastline: string = ''
     task.onExit(code => {
+      for (const item of parseLintOutput(stdout.join('\n'), cwd)) {
+        this.onQuickfixItem(item, cwd)
+      }
       if (code != 0) {
-        window.showWarningMessage(`Eslint found: ${lastline}`)
+        window.showWarningMessage(`Eslint found: ${lastline || 'problems'}`)
       } else {
         window.showInformationMessage(`Eslint no problem.`)
       }
       this.onStop()
     })
     task.onStdout(lines => {
-      let pre: string[] = []
-      for (let i = 0; i < lines.length; i++) {
-        let line = lines[i]
-        if (line.endsWith(']')) {
-          if (pre.length > 0) {
-            let joined = pre.join(' ') + ' ' + line
-            this.onLine(joined, cwd)
-            pre = []
-          } else {
-            this.onLine(line, cwd)
-          }
-        } else {
-          pre.push(line)
-        }
-      }
+      stdout = stdout.concat(lines)
       let last = lines[lines.length - 1]
-      if (last.includes('problem')) lastline = last
+      if (last && last.includes('problem')) lastline = last
     })
     task.onStderr(lines => {
       window.showErrorMessage(`Eslint error: ` + lines.join('\n'))
     })
     this.disposables.push(Disposable.create(() => {
       task.dispose()
-    }))
+    }), this.statusItem)
   }
 
   private async start(options: TaskOptions): Promise<boolean> {
@@ -79,37 +103,35 @@ export default class EslintTask implements Disposable {
     this.statusItem.hide()
   }
 
-  private onLine(line: string, cwd?: string): void {
-    let ms = line.match(errorRegex)
-    if (!ms) return
-    let fullpath = ms[1]
-    let uri = Uri.file(fullpath).toString()
-    let filepath = cwd ? path.relative(cwd, fullpath) : fullpath
-    let doc = workspace.getDocument(uri)
-    let bufnr = doc ? doc.bufnr : null
-    let cols = workspace.env.columns - filepath.length
-    let msg = ms[4].length > cols ? ms[4].slice(0, cols) + '...' : ms[4]
-    let item = {
+  private onQuickfixItem(item: LintQuickfixItem, cwd?: string): void {
+    const fullpath = cwd ? path.resolve(cwd, item.filename) : item.filename
+    const uri = Uri.file(fullpath).toString()
+    const doc = workspace.getDocument(uri)
+    const bufnr = doc ? doc.bufnr : null
+    const filepath = cwd ? path.relative(cwd, fullpath) : fullpath
+    const cols = workspace.env.columns - filepath.length
+    const msg = item.text.length > cols ? item.text.slice(0, cols) + '...' : item.text
+    const quickfix = {
       filename: filepath,
-      lnum: Number(ms[2]),
-      col: Number(ms[3]),
-      text: `${msg} ${ms[6] ? `[${ms[6]}]` : ''}`,
-      type: /error/i.test(ms[5]) ? 'E' : 'W'
+      lnum: item.lnum,
+      col: item.col,
+      text: msg,
+      type: item.type
     } as any
-    if (bufnr) item.bufnr = bufnr
-    workspace.nvim.call('setqflist', [[item], 'a'], true)
+    if (bufnr) quickfix.bufnr = bufnr
+    workspace.nvim.call('setqflist', [[quickfix], 'a'], true)
   }
 
-  public async getOptions(): Promise<TaskOptions> {
+  public async getOptions(): Promise<TaskOptions | undefined> {
     let folders = workspace.workspaceFolders
-    if (folders.length === 0) return
+    if (folders.length === 0) return undefined
     let root = Uri.parse(folders[0].uri).fsPath
     let config = workspace.getConfiguration('eslint', folders[0])
     let cmd = await resolveLintCommand(root, config.get<string | null>('lintTask.command', null))
     let args = config.get<string[]>('lintTask.options', ['.'])
     return {
       cmd,
-      args: args.concat(['-f', 'unix', '--no-color']),
+      args: args.concat(['-f', 'json', '--no-color']),
       cwd: root
     }
   }

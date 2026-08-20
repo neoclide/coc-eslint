@@ -5,7 +5,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
 import semverParse = require('semver/functions/parse');
 import semverGte = require('semver/functions/gte');
@@ -18,12 +19,14 @@ import {
 import { URI } from 'vscode-uri';
 
 import { ProbeFailedParams, ProbeFailedRequest, NoESLintLibraryRequest, Status, NoConfigRequest, StatusNotification } from './shared/customMessages';
-import { ConfigurationSettings, DirectoryItem, ESLintSeverity, ModeEnum, ModeItem, PackageManagers, RuleCustomization, RuleSeverity, Validate } from './shared/settings';
+import { ConfigurationSettings, DirectoryItem, ESLintOptions, ESLintSeverity, ModeEnum, ModeItem, PackageManagers, RuleCustomization, RuleSeverity, Validate } from './shared/settings';
 
 import * as Is from './is';
 import { LRUCache } from './linkedMap';
 import { isUNC, normalizeDriveLetter, normalizePath } from './paths';
 import LanguageDefaults from './languageDefaults';
+
+const execFileAsync = promisify(execFile);
 
 
 /**
@@ -560,7 +563,8 @@ export namespace RuleSeverities {
 	const ruleSeverityCache = new LRUCache<string, RuleSeverity | null>(1024);
 
 	export function getOverride(ruleId: string, customizations: RuleCustomization[], isFixable?: boolean): RuleSeverity | undefined {
-		let result: RuleSeverity | undefined | null = ruleSeverityCache.get(ruleId);
+		const cacheKey = `${ruleId}:${isFixable === true ? 'true' : isFixable === false ? 'false' : 'any'}:${JSON.stringify(customizations)}`;
+		let result: RuleSeverity | undefined | null = ruleSeverityCache.get(cacheKey);
 		if (result === null) {
 			return undefined;
 		}
@@ -578,11 +582,11 @@ export namespace RuleSeverities {
 			}
 		}
 		if (result === undefined) {
-			ruleSeverityCache.set(ruleId, null);
+			ruleSeverityCache.set(cacheKey, null);
 			return undefined;
 		}
 
-		ruleSeverityCache.set(ruleId, result);
+		ruleSeverityCache.set(cacheKey, result);
 		return result;
 	}
 
@@ -885,17 +889,17 @@ export namespace ESLint {
 		if (resultPromise) {
 			return resultPromise;
 		}
-	resultPromise = connection.workspace.getConfiguration({ scopeUri: uri, section: '' }).then((configuration: ConfigurationSettings | null | undefined) => {
-			const settings: TextDocumentSettings = Object.assign(
+	resultPromise = connection.workspace.getConfiguration({ scopeUri: uri, section: '' }).then(async (configuration: ConfigurationSettings | null | undefined) => {
+			const settings = Object.assign(
 				{},
 				configuration ?? { validate: Validate.off },
 				{ silent: false, library: undefined, resolvedGlobalPackageManagerPath: undefined },
 				{ workingDirectory: undefined}
-			);
+			) as TextDocumentSettings;
 			if (settings.validate === Validate.off) {
 				return settings;
 			}
-			settings.resolvedGlobalPackageManagerPath = GlobalPaths.get(settings.packageManager);
+			settings.resolvedGlobalPackageManagerPath = await GlobalPaths.get(settings.packageManager);
 			const filePath = inferFilePath(document, settings.useRealpaths);
 			const workspaceFolderPath = settings.workspaceFolder !== undefined ? inferFilePath(settings.workspaceFolder.uri, settings.useRealpaths) : undefined;
 			let assumeFlatConfig:boolean = false;
@@ -1312,29 +1316,28 @@ export namespace ESLint {
 	 * Global paths for the different package managers
 	 */
 	namespace GlobalPaths {
-		const globalPaths: Record<string, { cache: string | undefined; get(): string | undefined }> = {
+		const globalPaths: Record<string, { cache: Promise<string | undefined> | undefined; get(): Promise<string | undefined> }> = {
 			yarn: {
 				cache: undefined,
-				get(): string | undefined {
-					return Files.resolveGlobalYarnPath(trace);
+				get(): Promise<string | undefined> {
+					return Promise.resolve().then(() => Files.resolveGlobalYarnPath(trace)).catch(() => undefined);
 				}
 			},
 			npm: {
 				cache: undefined,
-				get(): string | undefined {
-					return Files.resolveGlobalNodePath(trace);
+				get(): Promise<string | undefined> {
+					return Promise.resolve().then(() => Files.resolveGlobalNodePath(trace)).catch(() => undefined);
 				}
 			},
 			pnpm: {
 				cache: undefined,
-				get(): string {
-					const pnpmPath = execSync('pnpm root -g').toString().trim();
-					return pnpmPath;
+				get(): Promise<string | undefined> {
+					return execFileAsync('pnpm', ['root', '-g']).then(({ stdout }) => stdout.trim() || undefined).catch(() => undefined);
 				}
 			}
 		};
 
-		export function get(packageManager: PackageManagers): string | undefined {
+		export function get(packageManager: PackageManagers): Promise<string | undefined> {
 			const pm = globalPaths[packageManager];
 			if (pm) {
 				if (pm.cache === undefined) {
@@ -1342,7 +1345,7 @@ export namespace ESLint {
 				}
 				return pm.cache;
 			}
-			return undefined;
+			return Promise.resolve(undefined);
 		}
 	}
 

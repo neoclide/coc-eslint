@@ -3,7 +3,6 @@
     "outDir": "lib",
     "sourceMap": false,
     "noEmit": true,
-    "importHelpers": true,
     "allowUnreachableCode": false,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
@@ -12,8 +11,9 @@
     "noUnusedParameters": false,
     "strictPropertyInitialization": false,
     "target": "es2018",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "importHelpers": false,
     "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "lib": ["es2017", "es2018", "es2019", "es2020", "es2021"],
@@ -24,6 +24,6 @@
     "strictFunctionTypes": false,
     "plugins": []
   },
-  "include": ["src"],
+  "include": ["src", "server"],
   "exclude": ["typings"]
 }
