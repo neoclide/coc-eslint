@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseLintOutput, resolveLintCommand } from '../src/task'
+import { getLintTaskArgs, parseLintOutput, resolveLintCommand } from '../src/task'
 
 test('lintTask.command overrides executable discovery', async () => {
   assert.equal(await resolveLintCommand('/does/not/exist', 'custom-eslint'), 'custom-eslint')
   assert.equal(await resolveLintCommand('/does/not/exist', null), 'eslint')
+})
+
+test('lintProject uses ESLint built-in JSON output (#154, #159)', () => {
+  const options = ['.']
+  assert.deepEqual(getLintTaskArgs(options), ['.', '-f', 'json', '--no-color'])
+  assert.deepEqual(options, ['.'])
 })
 
 test('parses built-in JSON formatter output for quickfix', () => {

@@ -123,10 +123,15 @@ For warnings which support an auto-fix. You can apply the quick fix by either:
 
 ## Supporting
 
-If you like this extension, consider supporting it on Patreon or PayPal:
+### ESLint dependency
 
-<a href="https://www.patreon.com/chemzqm"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Patreon donate button" /> </a>
-<a href="https://www.paypal.com/paypalme/chezqm"><img src="https://werwolv.net/assets/paypal_banner.png" alt="PayPal donate button" /> </a>
+`coc-eslint` loads the ESLint library from the current workspace when possible;
+it does not bundle ESLint or project-specific ESLint plugins and configurations.
+Install `eslint`, its plugins, and shared configurations in the workspace that
+contains the files being linted. If no workspace installation can be resolved,
+the extension falls back to the global package location for the configured
+`eslint.packageManager`. You can also set `eslint.nodePath` to the directory
+that contains a resolvable ESLint installation.
 
 ## License
 

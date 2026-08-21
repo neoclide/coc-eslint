@@ -6,6 +6,10 @@ export async function resolveLintCommand(root: string, command: string | null | 
   return typeof command === 'string' && command.length > 0 ? command : findEslint(root)
 }
 
+export function getLintTaskArgs(args: string[]): string[] {
+  return args.concat(['-f', 'json', '--no-color'])
+}
+
 export interface LintQuickfixItem {
   filename: string
   lnum: number
@@ -131,7 +135,7 @@ export default class EslintTask implements Disposable {
     let args = config.get<string[]>('lintTask.options', ['.'])
     return {
       cmd,
-      args: args.concat(['-f', 'json', '--no-color']),
+      args: getLintTaskArgs(args),
       cwd: root
     }
   }

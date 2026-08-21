@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { URI } from 'vscode-uri'
-import { Diagnostics, RuleSeverities } from '../server/eslint'
+import { Diagnostics, ESLint, RuleSeverities } from '../server/eslint'
 import LanguageDefaults from '../server/languageDefaults'
 import { getFileSystemPath } from '../server/paths'
 import { RuleSeverity } from '../server/shared/settings'
@@ -58,4 +58,33 @@ test('isolates cached code actions by rule, URI, and document version', () => {
 
 test('uses a normal block comment for unknown languages', () => {
   assert.deepEqual(LanguageDefaults.getBlockComment('unknown-language'), ['/*', '*/'])
+})
+
+test('finds eslintrc files in nested directories (#129)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coc-eslint-working-directory-'))
+  const source = path.join(root, 'src')
+  const file = path.join(source, 'index.js')
+  try {
+    fs.mkdirSync(source)
+    fs.writeFileSync(path.join(source, '.eslintrc'), '{}')
+    fs.writeFileSync(file, '')
+    assert.deepEqual(ESLint.findWorkingDirectory(root, file), [source, false])
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('finds flat config in nested package directories (#150)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coc-eslint-flat-directory-'))
+  const packageRoot = path.join(root, 'packages', 'app')
+  const source = path.join(packageRoot, 'src')
+  const file = path.join(source, 'index.ts')
+  try {
+    fs.mkdirSync(source, { recursive: true })
+    fs.writeFileSync(path.join(packageRoot, 'eslint.config.mjs'), 'export default []')
+    fs.writeFileSync(file, '')
+    assert.deepEqual(ESLint.findWorkingDirectory(root, file), [packageRoot, true])
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
 })
