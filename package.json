@@ -604,7 +604,7 @@
     "esbuild": "^0.28.2",
     "coc-test": "^0.1.6",
     "typescript": "^6.0.3",
-    "vscode-languageserver": "10.0.0-next.10",
+    "vscode-languageserver": "10.1.0",
     "vscode-languageserver-textdocument": "1.0.11",
     "vscode-languageserver-protocol": "3.17.6-next.10",
     "vscode-uri": "^3.0.8"
