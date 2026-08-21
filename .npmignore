@@ -1,6 +1,7 @@
 src
 tsconfig.json
 server
+esbuild.js
 *.map
 yarn.lock
 test
