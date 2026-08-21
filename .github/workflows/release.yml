@@ -129,12 +129,12 @@ jobs:
           {
             printf '## %s\n\n' "$version"
             cat "$release_notes"
-            if [[ -s CHANGELOG.md ]]; then
+            if [[ -s history.md ]]; then
               printf '\n'
-              cat CHANGELOG.md
+              cat history.md
             fi
           } > "$updated_changelog"
-          mv "$updated_changelog" CHANGELOG.md
+          mv "$updated_changelog" history.md
 
           npm pack --dry-run
 
