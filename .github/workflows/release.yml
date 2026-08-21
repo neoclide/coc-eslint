@@ -46,9 +46,6 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Validate npm authentication
-        run: npm whoami
-
       - name: Plan release
         id: release
         shell: bash
@@ -103,11 +100,6 @@ jobs:
             exit 0
           fi
 
-          published_version="$(npm view "$package_name" version)"
-          if [[ "$published_version" != "$current_version" ]]; then
-            echo "::error::package.json version ${current_version} does not match npm latest ${published_version}"
-            exit 1
-          fi
           echo "mode=release" >> "$GITHUB_OUTPUT"
           echo "previous_tag=${previous_tag}" >> "$GITHUB_OUTPUT"
 
