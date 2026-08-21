@@ -1,3 +1,9 @@
+## 3.1.2
+
+- fix release.yml (994c937)
+- not use npm whoami (b86f40d)
+- improve npmignore (65d1a70)
+
 ## 3.1
 
 - Added ESLint 10 flat-config support and related compatibility warnings.
