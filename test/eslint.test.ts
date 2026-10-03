@@ -88,3 +88,20 @@ test('finds flat config in nested package directories (#150)', () => {
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
+
+
+test('diagnostic keys support protocol markup messages without losing text identity', () => {
+  const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }
+  const plain = Diagnostics.computeKey({ range, code: 'rule', message: 'message' })
+  assert.equal(Diagnostics.computeKey({ range, code: 'rule', message: { kind: 'markdown', value: 'message' } }), plain)
+  assert.notEqual(Diagnostics.computeKey({ range, code: 'rule', message: { kind: 'markdown', value: 'other' } }), plain)
+  assert.notEqual(Diagnostics.computeKey({ range, code: 'other-rule', message: 'message' }), plain)
+})
+
+test('empty plain and markup diagnostic messages keep the original empty key', () => {
+  const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }
+  const empty = Diagnostics.computeKey({ range, code: 'rule', message: '' })
+  assert.equal(empty, '[0,0,0,1]-rule-')
+  assert.equal(Diagnostics.computeKey({ range, code: 'rule', message: { kind: 'markdown', value: '' } }), empty)
+  assert.equal(Diagnostics.computeKey({ range, code: 'rule', message: { kind: 'plaintext', value: '' } }), empty)
+})
