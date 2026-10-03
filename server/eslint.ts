@@ -627,9 +627,10 @@ export namespace Diagnostics {
 	export function computeKey(diagnostic: Diagnostic): string {
 		const range = diagnostic.range;
 		let message: string | undefined;
-		if (diagnostic.message) {
+		const messageText = typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message?.value;
+		if (messageText) {
 			const hash  = crypto.createHash('sha256');
-			hash.update(typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value);
+			hash.update(messageText);
 			message = hash.digest('base64');
 		}
 		return `[${range.start.line},${range.start.character},${range.end.line},${range.end.character}]-${diagnostic.code}-${message ?? ''}`;
