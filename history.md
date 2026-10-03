@@ -1,3 +1,8 @@
+## Unreleased
+
+- Update ESLint server protocol and utility dependencies to the reviewed upstream patch versions.
+- Support markup diagnostic messages when computing stable code-action keys.
+
 ## 3.1
 
 - Added ESLint 10 flat-config support and related compatibility warnings.

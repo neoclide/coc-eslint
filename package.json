@@ -599,15 +599,15 @@
   "devDependencies": {
     "@types/node": "^22.19",
     "@types/semver": "^7.5.8",
-    "coc.nvim": "^0.0.83-next.26",
-    "semver": "^7.6.0",
-    "esbuild": "^0.28.2",
     "coc-test": "^0.1.6",
+    "coc.nvim": "^0.0.83-next.26",
+    "esbuild": "^0.28.2",
+    "semver": "7.8.5",
     "typescript": "^6.0.3",
-    "vscode-languageserver": "10.1.0",
-    "vscode-languageserver-textdocument": "1.0.11",
-    "vscode-languageserver-protocol": "3.17.6-next.10",
-    "vscode-uri": "^3.0.8"
+    "vscode-languageserver": "10.1.1",
+    "vscode-languageserver-protocol": "3.18.3",
+    "vscode-languageserver-textdocument": "1.0.14",
+    "vscode-uri": "3.2.0"
   },
   "directories": {
     "lib": "lib",

@@ -629,7 +629,7 @@ export namespace Diagnostics {
 		let message: string | undefined;
 		if (diagnostic.message) {
 			const hash  = crypto.createHash('sha256');
-			hash.update(diagnostic.message);
+			hash.update(typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value);
 			message = hash.digest('base64');
 		}
 		return `[${range.start.line},${range.start.character},${range.end.line},${range.end.character}]-${diagnostic.code}-${message ?? ''}`;
