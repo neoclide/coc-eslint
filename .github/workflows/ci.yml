@@ -40,6 +40,9 @@ jobs:
       - name: Typecheck
         run: npx --no-install tsc --noEmit
 
+      - name: Build script regression tests
+        run: node --test test/build.test.cjs
+
       - name: Build
         run: npm run build
 
