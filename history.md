@@ -1,3 +1,12 @@
+## 3.1.3
+
+- Merge pull request #160 from neoclide/codex/upstream-sync-20261003 (ca49ba9)
+- fix(build): fail CI when esbuild rejects (e1d5b85)
+- ci: validate pull requests with Vim and Neovim (101e3b5)
+- docs(agents): add task branch workflow instructions (b5e348c)
+- Resolve release 3.1.2 conflicts and preserve empty diagnostic keys (6abe321)
+- Sync ESLint server dependencies with upstream patches (bb69dc3)
+
 ## Unreleased
 
 - Update ESLint server protocol and utility dependencies to the reviewed upstream patch versions.
