@@ -44,6 +44,8 @@ jobs:
         run: npm run build
 
       - name: Test
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run test
 
       - name: Plan release

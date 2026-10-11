@@ -47,4 +47,6 @@ jobs:
         run: npm run build
 
       - name: Integration tests (${{ matrix.editor }})
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run test:integration:${{ matrix.editor }}
