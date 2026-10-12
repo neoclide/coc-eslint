@@ -1,3 +1,7 @@
+## 3.1.4
+
+- fix(ci): authenticate coc-test GitHub requests (#161) (4aa1a65)
+
 ## 3.1.3
 
 - Merge pull request #160 from neoclide/codex/upstream-sync-20261003 (ca49ba9)
